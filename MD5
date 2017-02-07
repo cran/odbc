@@ -1,6 +1,7 @@
-d27c2ca2514f79a401497939b2610613 *DESCRIPTION
+4b1ba1a8388e90b7eb344dc75217c8dc *DESCRIPTION
 d3d2f503f5c96ac395a270e7c295ec0b *LICENSE
 841c92add0d97c9b260f478b877fecb5 *NAMESPACE
+00230eb0e774fc2b970b72c555fdda39 *NEWS.md
 77e04376123000a712fd3b43e0a96996 *R/Connection.R
 4d8d41b23141a0a34451f6c64e22705e *R/Driver.R
 4936d0c229e7e1cc569263ea96c0acb1 *R/RcppExports.R
@@ -11,7 +12,7 @@ d3d2f503f5c96ac395a270e7c295ec0b *LICENSE
 a40172863c3418be9190e6709e3084a7 *R/zzz.R
 6cfc622afa08b2b3afa824834b1edfb4 *README.md
 12d1848ebfc60eaa57a94ea963b90462 *cleanup
-52d90fa8747a84ae732fc42fb147086c *configure
+6c53df35cc2a29fce8f135865da07f6a *configure
 d41d8cd98f00b204e9800998ecf8427e *configure.win
 cf2915a83b96aa99224efe4b4773d772 *inst/COPYING
 ec2ab4a55f886af15d409abcaba56e14 *man/OdbcConnection.Rd
@@ -24,7 +25,7 @@ f853f516d37dcac4c9157bbcea0164f1 *man/odbc-package.Rd
 a22d38fca2be858243d2c52c56fd740d *man/odbc-tables.Rd
 362063f97711fa2e88ea24d68582f7e0 *man/odbc.Rd
 188486631ecf8d56b40026572f505755 *src/Makevars.in
-5ee93583fee749f646a263bb1e090190 *src/Makevars.win
+afa0bcb36ecaaada80b81656f290fc88 *src/Makevars.win
 cda34dbb1b8a0b5eda2cc8f91a7f9f61 *src/RcppExports.cpp
 8246425601ac75266bec18c12fdc12e5 *src/connection.cpp
 5d211d83850416215e1352002176fd6b *src/nanodbc.cpp
@@ -36,7 +37,7 @@ a9ae0831c1dfa9c439e09f6d8a468274 *src/odbc_types.h
 a95229626549ad6f4a3aefbcb6762a59 *src/r_types.h
 312bde615ebb8d64296124a3e8095df8 *src/result.cpp
 421d6de43a65d2870aa544a717a7d0b7 *tests/testthat.R
-051098734ce90db091198195b8d4bc11 *tests/testthat/helper.R
+7f04d1ef8267615f8d53a22a3ad1e749 *tests/testthat/helper.R
 212b73d00d98c16a726b07d6751ede08 *tests/testthat/test-MySQL.R
 47bc6cb6ef66ca1c70ff1248adebda6d *tests/testthat/test-PostgreSQL.R
 73a47b66ac62dcbe29ee6ba71a174232 *tests/testthat/test-SQLServer.R
