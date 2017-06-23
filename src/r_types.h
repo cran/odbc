@@ -1,21 +1,19 @@
 #pragma once
 
+#include "sql_types.h"
 #include <Rcpp.h>
-#ifdef _WIN32
-#undef Realloc
-#undef Free
-#include <windows.h>
-#endif
-#include "sqlext.h"
 
 namespace odbc {
-  typedef enum {
-    logical_t,
-    integer_t,
-    double_t,
-    date_t,
-    datetime_t,
-    string_t,
-    raw_t,
-  } r_type;
+typedef enum {
+  logical_t,
+  integer_t,
+  integer64_t,
+  double_t,
+  date_t,
+  datetime_t,
+  time_t,
+  string_t,
+  ustring_t,
+  raw_t,
+} r_type;
 }

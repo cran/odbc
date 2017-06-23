@@ -7,6 +7,7 @@
 \alias{show,OdbcDriver-method}
 \alias{dbDataType,OdbcDriver,ANY-method}
 \alias{dbDataType,OdbcDriver,list-method}
+\alias{dbDataType,OdbcDriver,data.frame-method}
 \alias{dbIsValid,OdbcDriver-method}
 \alias{dbGetInfo,OdbcDriver-method}
 \title{Odbc Driver Methods}
@@ -17,6 +18,8 @@
 
 \S4method{dbDataType}{OdbcDriver,list}(dbObj, obj, ...)
 
+\S4method{dbDataType}{OdbcDriver,data.frame}(dbObj, obj, ...)
+
 \S4method{dbIsValid}{OdbcDriver}(dbObj, ...)
 
 \S4method{dbGetInfo}{OdbcDriver}(dbObj, ...)
@@ -24,8 +27,8 @@
 \arguments{
 \item{object}{Any R object}
 
-\item{dbObj}{A object inheriting from \code{\linkS4class{DBIDriver}}
-or \code{\linkS4class{DBIConnection}}}
+\item{dbObj}{A object inheriting from \linkS4class{DBIDriver}
+or \linkS4class{DBIConnection}}
 
 \item{obj}{An R object whose SQL type we want to determine.}
 

@@ -3,15 +3,16 @@
 \docType{methods}
 \name{dbConnect,OdbcDriver-method}
 \alias{dbConnect,OdbcDriver-method}
+\alias{dbConnect}
 \title{Connect to a ODBC compatible database}
 \usage{
-\S4method{dbConnect}{OdbcDriver}(drv, dsn = NULL, ..., driver = NULL,
-  server = NULL, database = NULL, uid = NULL, pwd = NULL,
-  .connection_string = NULL)
+\S4method{dbConnect}{OdbcDriver}(drv, dsn = NULL, ..., timezone = "UTC",
+  encoding = "", driver = NULL, server = NULL, database = NULL,
+  uid = NULL, pwd = NULL, .connection_string = NULL)
 }
 \arguments{
-\item{drv}{an object that inherits from \code{\linkS4class{DBIDriver}},
-or an existing \code{\linkS4class{DBIConnection}}
+\item{drv}{an object that inherits from \linkS4class{DBIDriver},
+or an existing \linkS4class{DBIConnection}
 object (in order to clone an existing connection).}
 
 \item{dsn}{The Data Source Name.}
@@ -19,13 +20,23 @@ object (in order to clone an existing connection).}
 \item{...}{Additional ODBC keywords, these will be joined with the other
 arguments to form the final connection string.}
 
+\item{timezone}{The Server time zone. Useful if the database has an internal
+timezone that is \emph{not} 'UTC'. If the database is in your local timezone set
+to \code{Sys.timezone()}. See \code{\link[=OlsonNames]{OlsonNames()}} for a complete list of available
+timezones on your system.}
+
+\item{encoding}{The text encoding used on the Database. If the database is
+the same as your local encoding set to \code{""}. See \code{\link[=iconvlist]{iconvlist()}} for a
+complete list of available encodings on your system. Note strings are always
+returned \code{UTF-8} encoded.}
+
 \item{driver}{The ODBC driver name.}
 
 \item{server}{The server hostname.}
 
 \item{database}{The database on the server.}
 
-\item{uid}{The user identifer.}
+\item{uid}{The user identifier.}
 
 \item{pwd}{The password to use.}
 
@@ -37,7 +48,7 @@ arguments will be appended to this string.}
 Connect to a ODBC compatible database
 }
 \details{
-The connection string keywords are driver dependant. The parameters
+The connection string keywords are driver dependent. The parameters
 documented here are common, but some drivers may not accept them. Please see
 the specific driver documentation for allowed parameters,
 \url{https://www.connectionstrings.com} is also a useful resource of example

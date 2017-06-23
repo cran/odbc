@@ -10,6 +10,7 @@
 \alias{dbSendQuery,OdbcConnection,character-method}
 \alias{dbSendStatement,OdbcConnection,character-method}
 \alias{dbDataType,OdbcConnection,ANY-method}
+\alias{dbDataType,OdbcConnection,data.frame-method}
 \alias{dbQuoteString,OdbcConnection,character-method}
 \alias{dbQuoteIdentifier,OdbcConnection,character-method}
 \alias{dbListTables,OdbcConnection-method}
@@ -35,6 +36,8 @@
 
 \S4method{dbDataType}{OdbcConnection,ANY}(dbObj, obj, ...)
 
+\S4method{dbDataType}{OdbcConnection,data.frame}(dbObj, obj, ...)
+
 \S4method{dbQuoteString}{OdbcConnection,character}(conn, x, ...)
 
 \S4method{dbQuoteIdentifier}{OdbcConnection,character}(conn, x, ...)
@@ -49,7 +52,7 @@
 
 \S4method{dbGetInfo}{OdbcConnection}(dbObj, ...)
 
-\S4method{dbGetQuery}{OdbcConnection,character}(conn, statement, ...)
+\S4method{dbGetQuery}{OdbcConnection,character}(conn, statement, n = -1, ...)
 
 \S4method{dbBegin}{OdbcConnection}(conn, ...)
 
@@ -60,22 +63,27 @@
 \arguments{
 \item{object}{Any R object}
 
-\item{dbObj}{An object inheriting from \code{\linkS4class{DBIObject}},
-i.e. \code{\linkS4class{DBIDriver}}, \code{\linkS4class{DBIConnection}},
-or a \code{\linkS4class{DBIResult}}}
+\item{dbObj}{An object inheriting from \linkS4class{DBIObject},
+i.e. \linkS4class{DBIDriver}, \linkS4class{DBIConnection},
+or a \linkS4class{DBIResult}}
 
 \item{...}{Other arguments to methods.}
 
-\item{conn}{A \code{\linkS4class{DBIConnection}} object, as produced by
+\item{conn}{A \linkS4class{DBIConnection} object, as returned by
 \code{\link[=dbConnect]{dbConnect()}}.}
 
-\item{statement}{a character vector of length 1 containing SQL.}
+\item{statement}{a character string containing SQL.}
 
 \item{obj}{An R object whose SQL type we want to determine.}
 
-\item{x}{A character vector to label as being escaped SQL.}
+\item{x}{A character vector to quote as string.}
 
 \item{name}{A character string specifying a DBMS table name.}
+
+\item{n}{maximum number of records to retrieve per fetch. Use \code{n = -1}
+or \code{n = Inf}
+to retrieve all pending records.  Some implementations may recognize other
+special values.}
 }
 \description{
 Implementations of pure virtual functions defined in the \code{DBI} package

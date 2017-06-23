@@ -1,7 +1,7 @@
 #' Convenience functions for reading/writing DBMS tables
 #'
 #' @param conn a \code{\linkS4class{OdbcConnection}} object, produced by
-#'   \code{\link[DBI]{dbConnect}}
+#'   [DBI::dbConnect()]
 #' @param name a character string specifying a table name. Names will be
 #'   automatically quoted so you can use any sequence of characters, not
 #'   just any valid bare table name.
@@ -30,14 +30,14 @@ NULL
 #' @rdname odbc-tables
 #' @inheritParams DBI::dbWriteTable
 #' @param overwrite Allow overwriting the destination table. Cannot be
-#'   \code{TRUE} if \code{append} is also \code{TRUE}.
+#'   `TRUE` if `append` is also `TRUE`.
 #' @param append Allow appending to the destination table. Cannot be
-#'   \code{TRUE} if \code{overwrite} is also \code{TRUE}.
+#'   `TRUE` if `overwrite` is also `TRUE`.
 #' @export
 setMethod(
   "dbWriteTable", c("OdbcConnection", "character", "data.frame"),
   function(conn, name, value, overwrite=FALSE, append=FALSE, temporary = FALSE,
-    ...) {
+    row.names = NA, fieldTypes = NULL, ...) {
 
     if (overwrite && append)
       stop("overwrite and append cannot both be TRUE", call. = FALSE)
@@ -51,15 +51,11 @@ setMethod(
       dbRemoveTable(conn, name)
     }
 
-    if (!found && append) {
-      stop("Table ", name, " does not exist", call. = FALSE)
-    }
-
-    values <- sqlData(conn, value[, , drop = FALSE])
+    values <- sqlData(conn, row.names = row.names, value[, , drop = FALSE])
 
     if (!found || overwrite) {
-      sql <- sqlCreateTable(conn, name, values, temporary = temporary)
-      dbGetQuery(conn, sql)
+      sql <- sqlCreateTable(conn, name, values, fieldTypes = fieldTypes, row.names = FALSE, temporary = temporary)
+      dbExecute(conn, sql)
     }
 
     if (nrow(value) > 0) {
@@ -95,19 +91,40 @@ setMethod("sqlData", "OdbcConnection", function(con, value, row.names = NA, ...)
   value[is_POSIXlt] <- lapply(value[is_POSIXlt], as.POSIXct)
 
   # C code takes care of atomic vectors, dates, date times, and blobs just need to coerce other objects
-  is_object <- vapply(value, function(x) is.object(x) && !(is(x, "POSIXct") || is(x, "Date") || is(x, "blob")), logical(1))
+  is_object <- vapply(value, function(x) is.object(x) && !(is(x, "POSIXct") || is(x, "Date") || is(x, "blob") || is(x, "difftime")), logical(1))
   value[is_object] <- lapply(value[is_object], as.character)
+
+  if (nzchar(con@encoding)) {
+    is_character <- vapply(value, is.character, logical(1))
+    value[is_character] <- lapply(value[is_character], enc2iconv, to = con@encoding)
+  }
 
   value
 })
 
+##' @rdname odbc-tables
+##' @inheritParams DBI::sqlCreateTable
+##' @param fieldTypes Additional field types used to override derived types.
+##' @export
+setMethod("sqlCreateTable", "OdbcConnection",
+  function(con, table, fields, fieldTypes = NULL, row.names = NA, temporary = FALSE, ...) {
+    table <- dbQuoteIdentifier(con, table)
 
-#' @rdname odbc-tables
-#' @inheritParams DBI::dbReadTable
-#' @export
-setMethod(
-  "dbReadTable", c("OdbcConnection", "character"),
-  function(conn, name, ...) {
-    name <- dbQuoteIdentifier(conn, name)
-    dbGetQuery(conn, paste("SELECT * FROM ", name))
-  })
+    if (is.data.frame(fields)) {
+      fields <- sqlRownamesToColumn(fields, row.names)
+      fields <- vapply(fields, function(x) DBI::dbDataType(con, x), character(1))
+    }
+    if (!is.null(fieldTypes)) {
+      fields[names(fieldTypes)] <- fieldTypes
+    }
+
+    field_names <- dbQuoteIdentifier(con, names(fields))
+    field_types <- unname(fields)
+    fields <- paste0(field_names, " ", field_types)
+
+    SQL(paste0(
+      "CREATE ", if (temporary) "TEMPORARY ", "TABLE ", table, " (\n",
+      "  ", paste(fields, collapse = ",\n  "), "\n)\n"
+    ))
+  }
+)

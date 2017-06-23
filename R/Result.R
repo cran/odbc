@@ -3,7 +3,7 @@ NULL
 
 #' Odbc Result Methods
 #'
-#' Implementations of pure virtual functions defined in the \code{DBI} package
+#' Implementations of pure virtual functions defined in the `DBI` package
 #' for OdbcResult objects.
 #' @name OdbcResult
 #' @docType methods
@@ -42,12 +42,11 @@ setMethod(
 
 #' @rdname OdbcResult
 #' @inheritParams DBI::dbFetch
-#' @inheritParams DBI::sqlRownamesToColumn
 #' @export
 setMethod(
   "dbFetch", "OdbcResult",
-  function(res, n = -1, ..., row.names = NA) {
-    sqlColumnToRownames(result_fetch(res@ptr, n, ...), row.names)
+  function(res, n = -1, ...) {
+    result_fetch(res@ptr, n, ...)
   })
 
 #' @rdname OdbcResult
@@ -84,6 +83,9 @@ setMethod(
 setMethod(
   "dbGetStatement", "OdbcResult",
   function(res, ...) {
+    if (!dbIsValid(res)) {
+      stop("Result already cleared", call. = FALSE)
+    }
     res@statement
   })
 
@@ -106,7 +108,7 @@ setMethod(
   })
 
 #' @rdname OdbcResult
-#' @inheritParams DBI::getRowsAffected
+#' @inheritParams DBI::dbGetRowsAffected
 #' @export
 setMethod(
   "dbGetRowsAffected", "OdbcResult",
@@ -120,12 +122,6 @@ setMethod(
 setMethod(
   "dbBind", "OdbcResult",
   function(res, params, ...) {
-
-    params <- as.list(params)
-
-    if (any(lengths(params) != 1)) {
-      stop("`params` elements can only be of length 1", call. = FALSE)
-    }
-    result_bind(res@ptr, params)
+    result_bind(res@ptr, as.list(params))
     invisible(res)
   })

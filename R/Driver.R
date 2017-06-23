@@ -3,7 +3,7 @@ NULL
 
 #' Odbc Driver Methods
 #'
-#' Implementations of pure virtual functions defined in the \code{DBI} package
+#' Implementations of pure virtual functions defined in the `DBI` package
 #' for OdbcDriver objects.
 #' @name OdbcDriver
 NULL
@@ -17,7 +17,7 @@ NULL
 #' @examples
 #' \dontrun{
 #' #' library(DBI)
-#' Odbc::Odbc()
+#' odbc::odbc()
 #' }
 odbc <- function() {
   new("OdbcDriver")
@@ -41,10 +41,18 @@ setMethod(
 #'
 #' @inheritParams DBI::dbConnect
 #' @param dsn The Data Source Name.
+#' @param timezone The Server time zone. Useful if the database has an internal
+#' timezone that is _not_ 'UTC'. If the database is in your local timezone set
+#' to `Sys.timezone()`. See [OlsonNames()] for a complete list of available
+#' timezones on your system.
+#' @param encoding The text encoding used on the Database. If the database is
+#' the same as your local encoding set to `""`. See [iconvlist()] for a
+#' complete list of available encodings on your system. Note strings are always
+#' returned `UTF-8` encoded.
 #' @param driver The ODBC driver name.
 #' @param server The server hostname.
 #' @param database The database on the server.
-#' @param uid The user identifer.
+#' @param uid The user identifier.
 #' @param pwd The password to use.
 #' @param ... Additional ODBC keywords, these will be joined with the other
 #' arguments to form the final connection string.
@@ -53,26 +61,51 @@ setMethod(
 #' arguments will be appended to this string.
 #'
 #' @details
-#' The connection string keywords are driver dependant. The parameters
+#' The connection string keywords are driver dependent. The parameters
 #' documented here are common, but some drivers may not accept them. Please see
 #' the specific driver documentation for allowed parameters,
 #' \url{https://www.connectionstrings.com} is also a useful resource of example
 #' connection strings for a variety of databases.
+#' @aliases dbConnect
 #' @export
 setMethod(
   "dbConnect", "OdbcDriver",
-  function(drv, dsn = NULL, ..., driver = NULL, server = NULL, database = NULL,
+  function(drv, dsn = NULL, ..., timezone = "UTC", encoding = "", driver = NULL, server = NULL, database = NULL,
     uid = NULL, pwd = NULL, .connection_string = NULL) {
 
-    OdbcConnection(
+    con <- OdbcConnection(
       dsn = dsn,
       ...,
+      timezone = timezone,
+      encoding = encoding,
       driver = driver,
       server = server,
       database = database,
       uid = uid,
       pwd = pwd,
       .connection_string = .connection_string)
+
+    # perform the connection notification at the top level, to ensure that it's had
+    # a chance to get its external pointer connected, and so we can capture the
+    # expression that created it
+    if (!is.null(getOption("connectionObserver"))) { # nocov start
+      addTaskCallback(function(expr, ...) {
+        tryCatch({
+          if (is.call(expr) && identical(expr[[1]], as.symbol("<-"))) {
+            # notify if this is an assignment we can replay
+            on_connection_opened(eval(expr[[2]]), paste(
+              c("library(odbc)", deparse(expr)), collapse = "\n"))
+          }
+        }, error = function(e) {
+          warning("Could not notify connection observer. ", e$message)
+        })
+
+        # always return false so the task callback is run at most once
+        FALSE
+      })
+    } # nocov end
+
+    con
   }
 )
 
@@ -82,7 +115,7 @@ setMethod(
 setMethod(
   "dbDataType", "OdbcDriver",
   function(dbObj, obj, ...) {
-    get_data_type(dbObj, obj, ...)
+    odbcDataType(dbObj, obj, ...)
   })
 
 #' @rdname OdbcDriver
@@ -91,7 +124,16 @@ setMethod(
 setMethod(
   "dbDataType", c("OdbcDriver", "list"),
   function(dbObj, obj, ...) {
-    get_data_type(dbObj, obj, ...)
+    odbcDataType(dbObj, obj, ...)
+  })
+
+#' @rdname OdbcDriver
+#' @inheritParams DBI::dbDataType
+#' @export
+setMethod(
+  "dbDataType", c("OdbcDriver", "data.frame"),
+  function(dbObj, obj, ...) {
+    vapply(obj, odbcDataType, con = dbObj, FUN.VALUE = character(1), USE.NAMES = TRUE)
   })
 
 #' @rdname OdbcDriver

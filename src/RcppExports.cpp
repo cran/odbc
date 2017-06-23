@@ -27,13 +27,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // odbc_connect
-connection_ptr odbc_connect(std::string const& connection_string);
-RcppExport SEXP odbc_odbc_connect(SEXP connection_stringSEXP) {
+connection_ptr odbc_connect(std::string const& connection_string, std::string const& timezone, std::string const& encoding);
+RcppExport SEXP odbc_odbc_connect(SEXP connection_stringSEXP, SEXP timezoneSEXP, SEXP encodingSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string const& >::type connection_string(connection_stringSEXP);
-    rcpp_result_gen = Rcpp::wrap(odbc_connect(connection_string));
+    Rcpp::traits::input_parameter< std::string const& >::type timezone(timezoneSEXP);
+    Rcpp::traits::input_parameter< std::string const& >::type encoding(encodingSEXP);
+    rcpp_result_gen = Rcpp::wrap(odbc_connect(connection_string, timezone, encoding));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -111,16 +113,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // connection_sql_tables
-Rcpp::DataFrame connection_sql_tables(connection_ptr const& p, std::string const& catalog_name, std::string const& schema_name, std::string const& table_name, std::string const& table_type);
+Rcpp::DataFrame connection_sql_tables(connection_ptr const& p, SEXP catalog_name, SEXP schema_name, SEXP table_name, SEXP table_type);
 RcppExport SEXP odbc_connection_sql_tables(SEXP pSEXP, SEXP catalog_nameSEXP, SEXP schema_nameSEXP, SEXP table_nameSEXP, SEXP table_typeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< connection_ptr const& >::type p(pSEXP);
-    Rcpp::traits::input_parameter< std::string const& >::type catalog_name(catalog_nameSEXP);
-    Rcpp::traits::input_parameter< std::string const& >::type schema_name(schema_nameSEXP);
-    Rcpp::traits::input_parameter< std::string const& >::type table_name(table_nameSEXP);
-    Rcpp::traits::input_parameter< std::string const& >::type table_type(table_typeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type catalog_name(catalog_nameSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type schema_name(schema_nameSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type table_name(table_nameSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type table_type(table_typeSEXP);
     rcpp_result_gen = Rcpp::wrap(connection_sql_tables(p, catalog_name, schema_name, table_name, table_type));
     return rcpp_result_gen;
 END_RCPP
@@ -138,6 +140,27 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string const& >::type table_name(table_nameSEXP);
     rcpp_result_gen = Rcpp::wrap(connection_sql_columns(p, column_name, catalog_name, schema_name, table_name));
     return rcpp_result_gen;
+END_RCPP
+}
+// transactionLevels
+Rcpp::IntegerVector transactionLevels();
+RcppExport SEXP odbc_transactionLevels() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(transactionLevels());
+    return rcpp_result_gen;
+END_RCPP
+}
+// set_transaction_isolation
+void set_transaction_isolation(connection_ptr const& p, size_t level);
+RcppExport SEXP odbc_set_transaction_isolation(SEXP pSEXP, SEXP levelSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< connection_ptr const& >::type p(pSEXP);
+    Rcpp::traits::input_parameter< size_t >::type level(levelSEXP);
+    set_transaction_isolation(p, level);
+    return R_NilValue;
 END_RCPP
 }
 // result_release
@@ -270,4 +293,39 @@ BEGIN_RCPP
     column_types(df);
     return R_NilValue;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"odbc_list_drivers_", (DL_FUNC) &odbc_list_drivers_, 0},
+    {"odbc_list_data_sources_", (DL_FUNC) &odbc_list_data_sources_, 0},
+    {"odbc_odbc_connect", (DL_FUNC) &odbc_odbc_connect, 3},
+    {"odbc_connection_info", (DL_FUNC) &odbc_connection_info, 1},
+    {"odbc_connection_quote", (DL_FUNC) &odbc_connection_quote, 1},
+    {"odbc_connection_release", (DL_FUNC) &odbc_connection_release, 1},
+    {"odbc_connection_begin", (DL_FUNC) &odbc_connection_begin, 1},
+    {"odbc_connection_commit", (DL_FUNC) &odbc_connection_commit, 1},
+    {"odbc_connection_rollback", (DL_FUNC) &odbc_connection_rollback, 1},
+    {"odbc_connection_valid", (DL_FUNC) &odbc_connection_valid, 1},
+    {"odbc_connection_sql_tables", (DL_FUNC) &odbc_connection_sql_tables, 5},
+    {"odbc_connection_sql_columns", (DL_FUNC) &odbc_connection_sql_columns, 5},
+    {"odbc_transactionLevels", (DL_FUNC) &odbc_transactionLevels, 0},
+    {"odbc_set_transaction_isolation", (DL_FUNC) &odbc_set_transaction_isolation, 2},
+    {"odbc_result_release", (DL_FUNC) &odbc_result_release, 1},
+    {"odbc_result_active", (DL_FUNC) &odbc_result_active, 1},
+    {"odbc_result_completed", (DL_FUNC) &odbc_result_completed, 1},
+    {"odbc_new_result", (DL_FUNC) &odbc_new_result, 2},
+    {"odbc_result_fetch", (DL_FUNC) &odbc_result_fetch, 2},
+    {"odbc_result_column_info", (DL_FUNC) &odbc_result_column_info, 1},
+    {"odbc_result_bind", (DL_FUNC) &odbc_result_bind, 2},
+    {"odbc_result_execute", (DL_FUNC) &odbc_result_execute, 1},
+    {"odbc_result_insert_dataframe", (DL_FUNC) &odbc_result_insert_dataframe, 2},
+    {"odbc_result_rows_affected", (DL_FUNC) &odbc_result_rows_affected, 1},
+    {"odbc_result_row_count", (DL_FUNC) &odbc_result_row_count, 1},
+    {"odbc_column_types", (DL_FUNC) &odbc_column_types, 1},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_odbc(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }

@@ -5,7 +5,7 @@ odbc
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](http://www.repostatus.org/badges/latest/active.svg)](http://www.repostatus.org/#active) [![CRAN\_Status\_Badge](http://www.r-pkg.org/badges/version/odbc)](https://cran.r-project.org/package=odbc) [![Travis-CI Build Status](https://travis-ci.org/rstats-db/odbc.svg?branch=master)](https://travis-ci.org/rstats-db/odbc) [![Coverage Status](https://img.shields.io/codecov/c/github/rstats-db/odbc/master.svg)](https://codecov.io/github/rstats-db/odbc?branch=master) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/2bnahh7qg5iu7197?svg=true)](https://ci.appveyor.com/project/hadley/odbconnect-cqvmd)
 
-The goal of the odbc package is to provide a DBI-compliant interface to [Open Database Connectivity](https://msdn.microsoft.com/en-us/library/ms710252(v=vs.85).aspx) (ODBC) drivers. This gives a efficient, easy to setup connection to any database with ODBC drivers available, including [SQL Server](https://www.microsoft.com/en-us/sql-server/), [Oracle](https://www.oracle.com/database), [MySQL](https://www.mysql.com/), [PostgreSQL](https://www.postgresql.org/), [SQLite](https://sqlite.org/) and others. The implementation builds on the [nanodbc](http://nanodbc.lexicalunit.com/) C++ library.
+The goal of the odbc package is to provide a DBI-compliant interface to [Open Database Connectivity](https://msdn.microsoft.com/en-us/library/ms710252(v=vs.85).aspx) (ODBC) drivers. This allows for an efficient, easy to setup connection to any database with ODBC drivers available, including [SQL Server](https://www.microsoft.com/en-us/sql-server/), [Oracle](https://www.oracle.com/database), [MySQL](https://www.mysql.com/), [PostgreSQL](https://www.postgresql.org/), [SQLite](https://sqlite.org/) and others. The implementation builds on the [nanodbc](http://nanodbc.lexicalunit.com/) C++ library.
 
 -   [Installation](#installation)
     -   [Windows](#windows)
@@ -29,9 +29,11 @@ Installation
 
 For Unix and MacOS ODBC drivers should be compiled against [unixODBC](http://www.unixodbc.org/). Drivers compiled against [iODBC](http://www.iodbc.org/) *may* also work, but are not fully supported.
 
+After installation of the driver manager and driver, you will have to register the driver in a [odbcinst.ini](#dsn-configuration-files) file for it to appear in `odbc::odbcListDrivers()`.
+
 ### Windows
 
-Windows is bundled with ODBC libraries however drivers for each database need to be installed separately. Windows ODBC drivers typically include a installer that needs to be run and will install the driver to the proper locations.
+Windows is bundled with ODBC libraries however drivers for each database need to be installed separately. Windows ODBC drivers typically include an installer that needs to be run and will install the driver to the proper locations.
 
 ### MacOS
 
@@ -89,9 +91,11 @@ apt-get install libsqliteodbc
 
 ### R
 
-odbc is not yet available on CRAN, however [devtools](https://cran.r-project.org/package=devtools) can be used to install the latest version.
-
 ``` r
+# Install the latest odbc release from CRAN:
+install.packages("odbc")
+
+# Or the the development version from GitHub:
 # install.packages(devtools)
 devtools::install_github("rstats-db/odbc")
 ```
@@ -99,7 +103,7 @@ devtools::install_github("rstats-db/odbc")
 Connecting to a Database
 ------------------------
 
-Databases can be connect by specifying a connection string directly, or with DSN Configuration files.
+Databases can be connected by specifying a connection string directly, or with DSN configuration files.
 
 ### Connection Strings
 
@@ -138,9 +142,12 @@ The [ODBC Data Source Administrator](https://msdn.microsoft.com/en-us/library/ms
 
 #### MacOS / Linux
 
-On MacOS and Linux there are two separate text files that need to be edited. UnixODBC includes an command line executable `odbcinst` which can be used to query and modify the DSN files. However these are plain text files you can also edit by hand if desired.
+On MacOS and Linux there are two separate text files that need to be edited. UnixODBC includes a command line executable `odbcinst` which can be used to query and modify the DSN files. However these are plain text files you can also edit by hand if desired.
 
-There are two different files used to setup the DSN information. - `odbcinst.ini` - which defines driver options - `odbc.ini` - which defines connection options
+There are two different files used to setup the DSN information.
+
+-   `odbcinst.ini` - which defines driver options
+-   `odbc.ini` - which defines connection options
 
 The DSN configuration files can be defined globally for all users of the system, often at `/etc/odbc.ini` or `/opt/local/etc/odbc.ini`, the exact location depends on what option was used when compiling unixODBC. `odbcinst -j` can be used to find the exact location. Alternatively the `ODBCSYSINI` environment variable can be used to specify the location of the configuration files. Ex. `ODBCSYSINI=~/ODBC`
 
@@ -151,7 +158,7 @@ A local DSN file can also be used with the files `~/.odbc.ini` and `~/.odbcinst.
 Contains driver information, particularly the name of the driver library. Multiple drivers can be specified in the same file.
 
 ``` ini
-[PostgreSQL]
+[PostgreSQL Driver]
 Driver          = /usr/local/lib/psqlodbcw.so
 
 [SQLite Driver]
@@ -181,11 +188,11 @@ See also: [unixODBC without the GUI](http://www.unixodbc.org/odbcinst.html) for 
 Usage
 -----
 
-All of the following examples assume you have already created a query `con`. See [Connecting to a database](#connecting-to-a-database) for more information on establishing a connection.
+All of the following examples assume you have already created a connection `con`. See [Connecting to a database](#connecting-to-a-database) for more information on establishing a connection.
 
 ### Table and Field information
 
-`dbListTables()` is used for listing tables in a database.
+`dbListTables()` is used for listing all existing tables in a database.
 
 ``` r
 dbListTables(con)
@@ -215,7 +222,7 @@ data <- dbWriteTable(con, "iris", iris)
 
 ### Querying
 
-`dbGetQuery()` will submit a query and fetch the results. It is also possible to submit the query and fetch separately with `dbSendQuery()` and `dbFetch()`. If the `n=` argument to `dbFetch()` can be used to fetch only part of a query.
+`dbGetQuery()` will submit a query and fetch the results. It is also possible to submit the query and fetch separately with `dbSendQuery()` and `dbFetch()`. The `n=` argument to `dbFetch()` can be used to fetch only the part of a query result (the next *n* rows).
 
 ``` r
 result <- dbSendQuery(con, "SELECT flight, tailnum, origin FROM flights ORDER BY origin")
@@ -230,11 +237,11 @@ rest <- dbFetch(result)
 Benchmarks
 ----------
 
-Odbc is often much faster than the existing [RODBC](https://cran.r-project.org/package=RODBC) and DBI compatible [RODBCDBI](https://cran.r-project.org/package=RODBCDBI) packages.
+The *odbc* package is often much faster than the existing [RODBC](https://cran.r-project.org/package=RODBC) and DBI compatible [RODBCDBI](https://cran.r-project.org/package=RODBCDBI) packages.
 
 ### Reading
 
-Reading a from a PostgreSQL database with the nytflights13 'flights' database (336,776 rows, 19 columns).
+Reading a table from a PostgreSQL database with the 'flights' dataset (336,776 rows, 19 columns) of the package [nytflights13](https://github.com/hadley/nycflights13).
 
 ``` r
 # First using RODBC / RODBCDBI
@@ -286,12 +293,6 @@ gc(verbose = FALSE)
 
 Writing the same dataset to the database.
 
-    #> [1] TRUE
-    #> [1] TRUE
-    #>           used (Mb) gc trigger  (Mb) max used  (Mb)
-    #> Ncells  712146 38.1    1770749  94.6  1770749  94.6
-    #> Vcells 8990784 68.6   27225095 207.8 33776265 257.7
-
 ``` r
 library(nycflights13)
 # rodbc does not support writing timestamps natively.
@@ -305,4 +306,31 @@ odbc <- dbConnect(odbc::odbc(), dsn = "PostgreSQL")
 system.time(dbWriteTable(odbc, "flights3", as.data.frame(flights)))
 #>    user  system elapsed 
 #>   7.802   3.703  26.016
+```
+
+### SQL Server
+
+``` r
+packageVersion("RSQLServer")
+#> [1] ‘0.3.0’
+
+# Writing
+rsqlserver <- dbConnect(RSQLServer::SQLServer(), server = "SQLServer")
+system.time(dbWriteTable(rsqlserver, "flights2", as.data.frame(flights)))
+#>    user  system elapsed
+#> 645.219  12.287 820.806
+
+odbc <- dbConnect(odbc::odbc(), dsn = "PostgreSQL")
+system.time(dbWriteTable(odbc, "flights3", as.data.frame(flights)))
+#>    user  system elapsed
+#>  12.336   0.412  21.802
+
+# Reading
+system.time(dbReadTable(rsqlserver, "flights", as.data.frame(flights)))
+#>    user  system elapsed
+#>   5.101   1.289   3.584
+
+system.time(dbReadTable(odbc, "flights", as.data.frame(flights)))
+#>   user  system elapsed
+#>  2.187   0.108   2.298
 ```
