@@ -1,6 +1,6 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.1.0
+Version: 1.1.1
 Authors@R: c(
     person("Jim", "Hester", , "james.hester@rstudio.com", role = c("aut", "cre")),
     person("Hadley", "Wickham", , "hadley@rstudio.com", role = c("aut")),
@@ -12,7 +12,7 @@ Description: A DBI-compatible interface to ODBC databases.
 License: MIT + file LICENSE
 URL: https://github.com/rstats-db/odbc
 BugReports: https://github.com/rstats-db/odbc/issues
-SystemRequirements: An ODBC3 driver manager and drivers.
+SystemRequirements: GNU make, An ODBC3 driver manager and drivers.
 RoxygenNote: 6.0.1
 LazyData: true
 ByteCompile: true
@@ -24,7 +24,7 @@ Collate: 'odbc.R' 'Driver.R' 'Connection.R' 'DataTypes.R'
         'RcppExports.R' 'Result.R' 'Table.R' 'Viewer.R' 'utils.R'
         'zzz.R'
 NeedsCompilation: yes
-Packaged: 2017-06-22 19:27:54 UTC; jhester
+Packaged: 2017-06-26 18:59:49 UTC; jhester
 Author: Jim Hester [aut, cre],
   Hadley Wickham [aut],
   lexicalunit [cph] (nanodbc library),
@@ -32,4 +32,4 @@ Author: Jim Hester [aut, cre],
   RStudio [cph, fnd]
 Maintainer: Jim Hester <james.hester@rstudio.com>
 Repository: CRAN
-Date/Publication: 2017-06-23 09:22:06 UTC
+Date/Publication: 2017-06-27 06:22:18 UTC

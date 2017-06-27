@@ -1,10 +1,10 @@
-a4b2cfb2122b326630258b2294cf3e91 *DESCRIPTION
+f1ef4e4355b041294cf37637faa69696 *DESCRIPTION
 d3d2f503f5c96ac395a270e7c295ec0b *LICENSE
 c0ad0da5a934b81609c8438e80ea392b *NAMESPACE
-c0f18113648308c71c54f7f424232460 *NEWS.md
+872e49572b497ce8b76fd750bbe89ec2 *NEWS.md
 c591ec4878c3ddef88fbc43b44d21126 *R/Connection.R
 97a6751d60f06740f31255d8b18eb540 *R/DataTypes.R
-aac93342cff64456aafbe68910b79c80 *R/Driver.R
+a56a29903851be1c210479a844d04dd3 *R/Driver.R
 8a4648425958d9a4ab79d8519958446b *R/RcppExports.R
 7a168e3f07b9fd371556450bdcb4a59d *R/Result.R
 720840e975610dec6f71ee7454d0b861 *R/Table.R
@@ -13,7 +13,7 @@ cbf5c6fd4927ee40046b038fe6638f71 *R/Viewer.R
 5ed55787ccba104645b149fb5b300099 *R/utils.R
 d6c0792978a79e5d8d5d8bb8d974eee0 *R/zzz.R
 66bb4330ce661b77024e3fcc6e68212b *README.md
-8e7dc87414363be2a0d642cee3fd85cc *build/odbc.pdf
+c56d20eeffaefb903a1ca6bdc9c8e7a3 *build/odbc.pdf
 12d1848ebfc60eaa57a94ea963b90462 *cleanup
 f43e33525c7c4367b60775c4b113f787 *configure
 d41d8cd98f00b204e9800998ecf8427e *configure.win
@@ -39,8 +39,8 @@ a4339ff6fc52dfc19c71b55272cf70b7 *man/odbcListDrivers.Rd
 5eae3ec9a4e6cdb38592ec776de7b3dc *man/test_roundtrip.Rd
 083302d7614cfe74e8201e30c49ef827 *src/Iconv.cpp
 fbf0060090b311c45e1874410f5d5d4e *src/Iconv.h
-f3bf1a5a80aa8fe1fe0c563213b7b895 *src/Makevars.in
-c12266df58d4a639251061939818b0a7 *src/Makevars.win
+526c89b09f97d2cb8ab7bf400ac6adf6 *src/Makevars.in
+749f782b55862345fd1d1ad2c6471675 *src/Makevars.win
 42f2eb04a62a71d9952712d6a4f2eccb *src/RcppExports.cpp
 3b83ef96387f14655fc854ddc3c6bd57 *src/cctz/LICENSE.txt
 196f5e976d001ca32f0535cd4db0844b *src/cctz/Makefile
@@ -79,7 +79,7 @@ c7740d027bea4cf5b5f3cea1cd9d755b *src/cctz/src/time_zone_posix.h
 d1f4bb85217a1e21bb594090e4380162 *src/integer64.h
 55c90cf52b8c0f14f0f4d93976c91c32 *src/nanodbc/nanodbc.cpp
 fdda4afa9fe9845f12e43bcc5bc7ed63 *src/nanodbc/nanodbc.h
-efb4ab40c07fc8afbf90b195d57eda32 *src/odbc_connection.cpp
+2854d0199a33d8e27c5ecc9d35cd7818 *src/odbc_connection.cpp
 136c9865942a8846425312ee0dd84ee8 *src/odbc_connection.h
 c09505e332ad6c823acff8c28b26e8e2 *src/odbc_result.cpp
 5baeab32184eb3e2db1620b81eaaf285 *src/odbc_result.h

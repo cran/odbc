@@ -1,5 +1,13 @@
 # odbc 1.1.1
 
+* Workaround for drivers which do not implement SQLGetInfo, such as the Access
+  driver. (#78)
+
+* Fix for installation error for systems without GNU Make as the default make, such as
+  Solaris.
+
+# odbc 1.1.0
+
 * Provide a fall backs for drivers which do not support `SQLDescribeParam` and
   those which do not support transactions.
 
