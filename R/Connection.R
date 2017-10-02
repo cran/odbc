@@ -10,12 +10,27 @@ NULL
 
 class_cache <- new.env(parent = emptyenv())
 
-OdbcConnection <- function(dsn = NULL, ..., encoding = "", timezone = "UTC", driver = NULL, server = NULL, database = NULL, uid = NULL, pwd = NULL, .connection_string = NULL) {
+OdbcConnection <- function(
+  dsn = NULL,
+  ...,
+  timezone = "UTC",
+  encoding = "",
+  bigint = c("integer64", "integer", "numeric", "character"),
+  driver = NULL,
+  server = NULL,
+  database = NULL,
+  uid = NULL,
+  pwd = NULL,
+  .connection_string = NULL) {
+
   args <- c(dsn = dsn, driver = driver, server = server, database = database, uid = uid, pwd = pwd, list(...))
   stopifnot(all(has_names(args)))
 
   connection_string <- paste0(.connection_string, paste(collapse = ";", sep = "=", names(args), args))
-  ptr <- odbc_connect(connection_string, timezone = timezone, encoding = encoding)
+
+  bigint <- bigint_mappings()[match.arg(bigint, names(bigint_mappings()))]
+
+  ptr <- odbc_connect(connection_string, timezone = timezone, encoding = encoding, bigint = bigint)
   quote <- connection_quote(ptr)
 
   info <- connection_info(ptr)
@@ -26,7 +41,7 @@ OdbcConnection <- function(dsn = NULL, ..., encoding = "", timezone = "UTC", dri
     setClass(info$dbms.name,
       contains = "OdbcConnection", where = class_cache)
   }
-  new(info$dbms.name, ptr = ptr, quote = quote, info = info, encoding = encoding)
+  res <- new(info$dbms.name, ptr = ptr, quote = quote, info = info, encoding = encoding)
 }
 
 #' @rdname OdbcConnection
@@ -42,6 +57,7 @@ setClass(
   )
 )
 
+# TODO: show encoding, timezone, bigint mapping
 #' @rdname OdbcConnection
 #' @inheritParams methods::show
 #' @export
@@ -111,7 +127,6 @@ setMethod(
   "dbSendStatement", c("OdbcConnection", "character"),
   function(conn, statement, ...) {
     res <- OdbcResult(connection = conn, statement = statement)
-    result_execute(res@ptr)
     res
   })
 
@@ -206,7 +221,7 @@ setMethod(
   "dbExistsTable", c("OdbcConnection", "character"),
   function(conn, name, ...) {
     stopifnot(length(name) == 1)
-    dbUnQuoteIdentifier(conn, name) %in% dbListTables(conn)
+    dbUnQuoteIdentifier(conn, name) %in% dbListTables(conn, ...)
   })
 
 #' @rdname OdbcConnection

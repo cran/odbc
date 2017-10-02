@@ -10,7 +10,7 @@ odbc_result::odbc_result(std::shared_ptr<odbc_connection> c, std::string sql)
     : c_(c),
       sql_(sql),
       rows_fetched_(0),
-      num_columns_(-1),
+      num_columns_(0),
       complete_(0),
       bound_(false),
       output_encoder_(Iconv(c_->encoding(), "UTF-8")) {
@@ -120,6 +120,7 @@ void odbc_result::bind_list(Rcpp::List const& x, bool use_transaction) {
       bind_columns(*s_, types[col], x, col, start, size);
     }
     r_ = std::make_shared<nanodbc::result>(nanodbc::execute(*s_, size));
+    num_columns_ = r_->columns();
     start += batch_size;
 
     Rcpp::checkUserInterrupt();
@@ -531,6 +532,7 @@ std::vector<r_type> odbc_result::column_types(nanodbc::result const& r) {
   for (short i = 0; i < num_columns_; ++i) {
 
     short type = r.column_datatype(i);
+
     switch (type) {
     case SQL_BIT:
       types.push_back(logical_t);
@@ -540,9 +542,6 @@ std::vector<r_type> odbc_result::column_types(nanodbc::result const& r) {
     case SQL_INTEGER:
       types.push_back(integer_t);
       break;
-    case SQL_BIGINT:
-      types.push_back(integer64_t);
-      break;
     // Double
     case SQL_DOUBLE:
     case SQL_FLOAT:
@@ -551,6 +550,29 @@ std::vector<r_type> odbc_result::column_types(nanodbc::result const& r) {
     case SQL_NUMERIC:
       types.push_back(double_t);
       break;
+
+    // 64 Bit Double
+    case SQL_BIGINT:
+      switch (connection()->get_bigint_mapping()) {
+      case i64_to_integer:
+        types.push_back(integer_t);
+        break;
+      case i64_to_double:
+        types.push_back(double_t);
+        break;
+      case i64_to_character:
+        types.push_back(string_t);
+        break;
+      case i64_to_integer64:
+        types.push_back(integer64_t);
+        break;
+      default:
+        types.push_back(string_t);
+        signal_unknown_field_type(type, r.column_name(i));
+        break;
+      }
+      break;
+
     // Date
     case SQL_DATE:
     case SQL_TYPE_DATE:
