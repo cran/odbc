@@ -54,6 +54,11 @@ setMethod(
 #' @param database The database on the server.
 #' @param uid The user identifier.
 #' @param pwd The password to use.
+#' @param dbms.name The database management system name. This should normally
+#' be queried automatically by the ODBC driver. This name is used as the class
+#' name for the OdbcConnect object returned from `dbConnect()`. However if the
+#' driver does not return a valid value it can be set manually with this
+#' parameter.
 #' @param ... Additional ODBC keywords, these will be joined with the other
 #' arguments to form the final connection string.
 #' @param .connection_string A complete connection string, useful if you are
@@ -83,6 +88,7 @@ setMethod(
     database = NULL,
     uid = NULL,
     pwd = NULL,
+    dbms.name = NULL,
     .connection_string = NULL) {
 
     con <- OdbcConnection(
@@ -96,6 +102,7 @@ setMethod(
       database = database,
       uid = uid,
       pwd = pwd,
+      dbms.name = dbms.name,
       .connection_string = .connection_string)
 
     # perform the connection notification at the top level, to ensure that it's had
@@ -104,7 +111,10 @@ setMethod(
     if (!is.null(getOption("connectionObserver"))) { # nocov start
       addTaskCallback(function(expr, ...) {
         tryCatch({
-          if (is.call(expr) && identical(expr[[1]], as.symbol("<-"))) {
+          if (is.call(expr) &&
+              as.character(expr[[1]]) %in% c("<-", "=") &&
+              "dbConnect" %in% as.character(expr[[3]][[1]])) {
+
             # notify if this is an assignment we can replay
             on_connection_opened(eval(expr[[2]]), paste(
               c("library(odbc)", deparse(expr)), collapse = "\n"))
