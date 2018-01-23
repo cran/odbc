@@ -1,5 +1,13 @@
+# odbc 1.1.5
+
+* Fix the return value for `dbQuoteIdentifier()` when given a length 0 input
+  (#146 @edgararuiz).
+
 # odbc 1.1.4
 
+* Fix multiple transactions with rollback (#136).
+
+* Add custom `sqlCreateTable` and `dbListTables` method for Taradata connections (@edgararuiz)
 ## Features
 
 * Add custom `sqlCreateTable` and `dbListTables` method for Teradata

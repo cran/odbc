@@ -171,6 +171,12 @@ setMethod(
 setMethod(
   "dbQuoteIdentifier", c("OdbcConnection", "character"),
   function(conn, x, ...) {
+    if (length(x) == 0L) {
+      return(DBI::SQL(character()))
+    }
+    if (any(is.na(x))) {
+      stop("Cannot pass NA to dbQuoteIdentifier()", call. = FALSE)
+    }
     if (nzchar(conn@quote)) {
       x <- gsub(conn@quote, paste0(conn@quote, conn@quote), x, fixed = TRUE)
     }

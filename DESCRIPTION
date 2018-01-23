@@ -1,6 +1,6 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.1.4
+Version: 1.1.5
 Authors@R: c(
     person("Jim", "Hester", , "james.hester@rstudio.com", role = c("aut", "cre")),
     person("Hadley", "Wickham", , "hadley@rstudio.com", role = c("aut")),
@@ -26,7 +26,7 @@ Collate: 'odbc.R' 'Driver.R' 'Connection.R' 'DataTypes.R'
         'RcppExports.R' 'Result.R' 'Table.R' 'Viewer.R' 'db.R'
         'hidden.R' 'utils.R' 'zzz.R'
 NeedsCompilation: yes
-Packaged: 2018-01-10 16:06:35 UTC; jhester
+Packaged: 2018-01-23 19:17:09 UTC; jhester
 Author: Jim Hester [aut, cre],
   Hadley Wickham [aut],
   lexicalunit [cph] (nanodbc library),
@@ -34,4 +34,4 @@ Author: Jim Hester [aut, cre],
   RStudio [cph, fnd]
 Maintainer: Jim Hester <james.hester@rstudio.com>
 Repository: CRAN
-Date/Publication: 2018-01-10 23:54:15 UTC
+Date/Publication: 2018-01-23 21:47:04 UTC
