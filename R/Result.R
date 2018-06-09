@@ -10,6 +10,9 @@ NULL
 NULL
 
 OdbcResult <- function(connection, statement) {
+  if (nzchar(connection@encoding)) {
+    statement <- enc2iconv(statement, connection@encoding)
+  }
   ptr <- new_result(connection@ptr, statement)
   new("OdbcResult", connection = connection, statement = statement, ptr = ptr)
 }
@@ -56,16 +59,6 @@ setMethod(
   "dbHasCompleted", "OdbcResult",
   function(res, ...) {
     result_completed(res@ptr)
-  })
-
-#' @rdname OdbcResult
-#' @inheritParams DBI::dbGetInfo
-#' @export
-setMethod(
-  "dbGetInfo", "OdbcResult",
-  function(dbObj, ...) {
-    # Optional
-    getMethod("dbGetInfo", "DBIResult", asNamespace("DBI"))(dbObj, ...)
   })
 
 #' @rdname OdbcResult

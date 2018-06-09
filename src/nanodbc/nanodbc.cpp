@@ -2817,7 +2817,9 @@ inline void result::result_impl::get_ref_impl<string_type>(short column, string_
                     buffer,          // TargetValuePtr
                     buffer_size,     // BufferLength
                     &ValueLenOrInd); // StrLen_or_IndPtr
-                if (ValueLenOrInd > 0)
+                if (ValueLenOrInd == SQL_NO_TOTAL)
+                    out.append(buffer, col.ctype_ == SQL_C_BINARY ? buffer_size : buffer_size - 1);
+                else if (ValueLenOrInd > 0)
                     out.append(
                         buffer,
                         std::min<std::size_t>(
@@ -2873,7 +2875,9 @@ inline void result::result_impl::get_ref_impl<string_type>(short column, string_
                     buffer,          // TargetValuePtr
                     buffer_size,     // BufferLength
                     &ValueLenOrInd); // StrLen_or_IndPtr
-                if (ValueLenOrInd > 0)
+                if (ValueLenOrInd == SQL_NO_TOTAL)
+                    out.append(buffer, (buffer_size / sizeof(wide_char_t)) - 1);
+                else if (ValueLenOrInd > 0)
                     out.append(
                         buffer,
                         std::min<std::size_t>(
@@ -3370,9 +3374,7 @@ connection::connection(const connection& rhs)
 }
 
 #ifndef NANODBC_NO_MOVE_CTOR
-connection::connection(connection&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_))
-{
-}
+connection::connection(connection&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_)) {}
 #endif
 
 connection& connection::operator=(connection rhs)
@@ -3401,9 +3403,7 @@ connection::connection(const string_type& connection_string, long timeout)
 {
 }
 
-connection::~connection() NANODBC_NOEXCEPT
-{
-}
+connection::~connection() NANODBC_NOEXCEPT {}
 
 void connection::connect(
     const string_type& dsn,
@@ -3548,9 +3548,7 @@ transaction::transaction(const transaction& rhs)
 }
 
 #ifndef NANODBC_NO_MOVE_CTOR
-transaction::transaction(transaction&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_))
-{
-}
+transaction::transaction(transaction&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_)) {}
 #endif
 
 transaction& transaction::operator=(transaction rhs)
@@ -3565,9 +3563,7 @@ void transaction::swap(transaction& rhs) NANODBC_NOEXCEPT
     swap(impl_, rhs.impl_);
 }
 
-transaction::~transaction() NANODBC_NOEXCEPT
-{
-}
+transaction::~transaction() NANODBC_NOEXCEPT {}
 
 void transaction::commit()
 {
@@ -3627,9 +3623,7 @@ statement::statement(class connection& conn)
 }
 
 #ifndef NANODBC_NO_MOVE_CTOR
-statement::statement(statement&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_))
-{
-}
+statement::statement(statement&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_)) {}
 #endif
 
 statement::statement(class connection& conn, const string_type& query, long timeout)
@@ -3654,9 +3648,7 @@ void statement::swap(statement& rhs) NANODBC_NOEXCEPT
     swap(impl_, rhs.impl_);
 }
 
-statement::~statement() NANODBC_NOEXCEPT
-{
-}
+statement::~statement() NANODBC_NOEXCEPT {}
 
 void statement::open(class connection& conn)
 {
@@ -4309,10 +4301,10 @@ catalog::table_privileges catalog::find_table_privileges(
 }
 
 catalog::columns catalog::find_columns(
-    const string_type& column,
-    const string_type& table,
-    const string_type& schema,
-    const string_type& catalog)
+    const string_type::value_type* column,
+    const string_type::value_type* table,
+    const string_type::value_type* schema,
+    const string_type::value_type* catalog)
 {
     statement stmt(conn_);
     RETCODE rc;
@@ -4320,14 +4312,14 @@ catalog::columns catalog::find_columns(
         NANODBC_FUNC(SQLColumns),
         rc,
         stmt.native_statement_handle(),
-        (NANODBC_SQLCHAR*)(catalog.empty() ? nullptr : catalog.c_str()),
-        (catalog.empty() ? 0 : SQL_NTS),
-        (NANODBC_SQLCHAR*)(schema.empty() ? nullptr : schema.c_str()),
-        (schema.empty() ? 0 : SQL_NTS),
-        (NANODBC_SQLCHAR*)(table.empty() ? nullptr : table.c_str()),
-        (table.empty() ? 0 : SQL_NTS),
-        (NANODBC_SQLCHAR*)(column.empty() ? nullptr : column.c_str()),
-        (column.empty() ? 0 : SQL_NTS));
+        (NANODBC_SQLCHAR*)(catalog),
+        (catalog == nullptr ? 0 : SQL_NTS),
+        (NANODBC_SQLCHAR*)(schema),
+        (schema == nullptr ? 0 : SQL_NTS),
+        (NANODBC_SQLCHAR*)(table),
+        (table == nullptr ? 0 : SQL_NTS),
+        (NANODBC_SQLCHAR*)(column),
+        (column == nullptr ? 0 : SQL_NTS));
     if (!success(rc))
         NANODBC_THROW_DATABASE_ERROR(stmt.native_statement_handle(), SQL_HANDLE_STMT);
 
@@ -4447,9 +4439,7 @@ result::result()
 {
 }
 
-result::~result() NANODBC_NOEXCEPT
-{
-}
+result::~result() NANODBC_NOEXCEPT {}
 
 result::result(statement stmt, long rowset_size)
     : impl_(new result_impl(stmt, rowset_size))
@@ -4457,9 +4447,7 @@ result::result(statement stmt, long rowset_size)
 }
 
 #ifndef NANODBC_NO_MOVE_CTOR
-result::result(result&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_))
-{
-}
+result::result(result&& rhs) NANODBC_NOEXCEPT : impl_(std::move(rhs.impl_)) {}
 #endif
 
 result::result(const result& rhs)
