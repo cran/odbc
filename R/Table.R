@@ -27,17 +27,11 @@
 #' @name odbc-tables
 NULL
 
-#' @rdname odbc-tables
-#' @inheritParams DBI::dbWriteTable
-#' @param overwrite Allow overwriting the destination table. Cannot be
-#'   `TRUE` if `append` is also `TRUE`.
-#' @param append Allow appending to the destination table. Cannot be
-#'   `TRUE` if `overwrite` is also `TRUE`.
-#' @export
-setMethod(
-  "dbWriteTable", c("OdbcConnection", "character", "data.frame"),
+odbc_write_table <-
   function(conn, name, value, overwrite=FALSE, append=FALSE, temporary = FALSE,
-    row.names = NA, field.types = NULL, ...) {
+    row.names = NA, field.types = NULL, batch_rows = getOption("odbc.batch_rows", 1024), ...) {
+
+    batch_rows <- parse_size(batch_rows)
 
     if (overwrite && append)
       stop("overwrite and append cannot both be TRUE", call. = FALSE)
@@ -58,6 +52,14 @@ setMethod(
       dbExecute(conn, sql)
     }
 
+    fieldDetails <- tryCatch({
+      details <- odbcConnectionColumns(conn, name)
+      details$param_index <- match(details$name, names(values))
+      details[!is.na(details$param_index), ]
+    }, error = function(e) {
+      return(NULL)
+    })
+
     if (nrow(value) > 0) {
 
       name <- dbQuoteIdentifier(conn, name)
@@ -70,15 +72,44 @@ setMethod(
         )
       rs <- OdbcResult(conn, sql)
 
+      if (!is.null(fieldDetails) && nrow(fieldDetails)) {
+        result_describe_parameters(rs@ptr, fieldDetails)
+      }
+
       tryCatch(
-        result_insert_dataframe(rs@ptr, values),
+        result_insert_dataframe(rs@ptr, values, batch_rows),
         finally = dbClearResult(rs)
         )
     }
 
     invisible(TRUE)
   }
-)
+
+#' @rdname odbc-tables
+#' @inheritParams DBI::dbWriteTable
+#' @param overwrite Allow overwriting the destination table. Cannot be
+#'   `TRUE` if `append` is also `TRUE`.
+#' @param append Allow appending to the destination table. Cannot be
+#'   `TRUE` if `overwrite` is also `TRUE`.
+#' @param batch_rows The number of row of the batch when writing, depending on
+#'   the database, driver and dataset adjusting this lower or higher may improve
+#'   performance.
+#' @export
+setMethod(
+  "dbWriteTable", c("OdbcConnection", "character", "data.frame"),
+  odbc_write_table)
+
+#' @rdname odbc-tables
+#' @export
+setMethod(
+  "dbWriteTable", c("OdbcConnection", "Id", "data.frame"),
+  odbc_write_table)
+
+#' @rdname odbc-tables
+#' @export
+setMethod(
+  "dbWriteTable", c("OdbcConnection", "SQL", "data.frame"),
+  odbc_write_table)
 
 #' @rdname odbc-tables
 #' @inheritParams DBI::dbReadTable
@@ -121,9 +152,18 @@ setMethod("sqlCreateTable", "OdbcConnection",
 createFields <- function(con, fields, field.types, row.names) {
   if (is.data.frame(fields)) {
     fields <- sqlRownamesToColumn(fields, row.names)
-    fields <- vapply(fields, function(x) DBI::dbDataType(con, x), character(1))
+    fields <- DBI::dbDataType(con, fields)
   }
   if (!is.null(field.types)) {
+    is_field <- names(field.types) %in% names(fields)
+    if (!all(is_field)) {
+      stop(
+        sprintf("Columns in `field.types` must be in the input, missing columns:\n%s",
+          paste0("  - '", names(field.types)[!is_field], "'", collapse = "\n")
+        ),
+      call. = FALSE)
+    }
+
     fields[names(field.types)] <- field.types
   }
 
@@ -139,9 +179,9 @@ setMethod(
   "dbExistsTable", c("OdbcConnection", "Id"),
   function(conn, name, ...) {
     name@name[["table"]] %in% connection_sql_tables(conn@ptr,
-      catalog_name = if ("catalog" %in% names(name@name)) name@name[["catalog"]] else "%",
-      schema_name = if ("schema" %in% names(name@name)) name@name[["schema"]] else "%",
-      table_name = if ("table" %in% names(name@name)) name@name[["table"]] else "%"
+      catalog_name = if ("catalog" %in% names(name@name)) name@name[["catalog"]] else NULL,
+      schema_name = if ("schema" %in% names(name@name)) name@name[["schema"]] else NULL,
+      table_name = if ("table" %in% names(name@name)) name@name[["table"]] else NULL
     )
   })
 

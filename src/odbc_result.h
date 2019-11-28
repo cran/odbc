@@ -18,9 +18,9 @@ inline void signal_unknown_field_type(short type, const std::string& name) {
 
 class odbc_error : public Rcpp::exception {
 public:
-  odbc_error(const nanodbc::database_error e, const std::string& sql)
+  odbc_error(const nanodbc::database_error& e, const std::string& sql)
       : Rcpp::exception("", false) {
-    message = std::string("<SQL> '" + sql + "'\n  " + e.what());
+    message = std::string(e.what()) + "\n<SQL> '" + sql + "'";
   }
   const char* what() const NANODBC_NOEXCEPT { return message.c_str(); }
 
@@ -30,13 +30,15 @@ private:
 
 class odbc_result {
 public:
-  odbc_result(std::shared_ptr<odbc_connection> c, std::string sql);
+  odbc_result(
+      std::shared_ptr<odbc_connection> c, std::string sql, bool immediate);
   std::shared_ptr<odbc_connection> connection() const;
   std::shared_ptr<nanodbc::statement> statement() const;
   std::shared_ptr<nanodbc::result> result() const;
   void prepare();
   void execute();
-  void bind_list(Rcpp::List const& x, bool use_transaction = true);
+  void describe_parameters(Rcpp::List const& x);
+  void bind_list(Rcpp::List const& x, bool use_transaction, size_t batch_rows);
   Rcpp::DataFrame fetch(int n_max = -1);
 
   int rows_fetched();

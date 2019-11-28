@@ -5,12 +5,16 @@
 #' - MySQL
 #' - PostgreSQL
 #' - SQL Server
+#' - Oracle
 #' - SQLite
 #' - Spark
 #' - Hive
 #' - Impala
 #' - Redshift
 #' - Vertica
+#' - BigQuery
+#' - Teradata
+#' - Access
 #'
 #' If you are using a different database and `dbWriteTable()` fails with a SQL
 #' parsing error the default method is not appropriate, you will need to write
@@ -204,6 +208,25 @@ odbcDataType.default <- function(con, obj, ...) {
 }
 
 #' @export
+`odbcDataType.ACCESS` <- function(con, obj, ...) {
+  switch_type(
+    obj,
+    factor = varchar(obj),
+    datetime = "DATETIME",
+    date = "DATE",
+    time = "TIME",
+    binary = "BINARY",
+    integer = "INTEGER",
+    double = "DOUBLE",
+    character = varchar(obj),
+    logical = "BIT",
+    list = varchar(obj),
+    stop("Unsupported type", call. = FALSE)
+  )
+}
+
+
+#' @export
 odbcDataType.Oracle <- function(con, obj, ...) {
   switch_type(obj,
      factor = "VARCHAR(255)",
@@ -245,6 +268,39 @@ odbcDataType.Oracle <- function(con, obj, ...) {
   )
 }
 
+#' @export
+`odbcDataType.BigQuery` <- function(con, obj, ...) {
+  switch_type(obj,
+    factor = "STRING",
+    datetime = "TIMESTAMP",
+    time = "TIME",
+    date = "DATE",
+    binary = "BYTES",
+    integer = "INT64",
+    double = "FLOAT64",
+    character = "STRING",
+    logical = "BOOL",
+    stop("Unsupported type", call. = FALSE)
+  )
+}
+
+#' @export
+`odbcDataType.Teradata` <- function(con, obj, ...) {
+  switch_type(obj,
+    factor = "VARCHAR(255)",
+    datetime = "TIMESTAMP",
+    date = "DATE",
+    time = "TIME",
+    binary = "BLOB",
+    integer = "INTEGER",
+    double = "FLOAT",
+    character = "VARCHAR(255)",
+    logical = "BYTEINT",
+    list = "VARCHAR(255)",
+    stop("Unsupported type", call. = FALSE)
+  )
+}
+
 switch_type <- function(obj, ...) {
   switch(object_type(obj), ...)
 }
@@ -282,8 +338,8 @@ varbinary <- function(x, type = "varbinary") {
 #' @param columns Table columns to exclude (default) or include, dependent on
 #' the value of `invert`. One of `datetime`, `date`, `binary`,
 #' `integer`, `double`, `character`, `logical`.
-#' @param invert If `TRUE`, change the definition of columns to be inclusive,
-#' rather than exclusive.
+#' @param invert If `TRUE`, change the definition of columns to be exclusive,
+#' rather than inclusive.
 #' @param force_sorted If `TRUE`, a sorted `id` column is added to the sent
 #' data, and the received data is sorted by this column before doing the
 #' comparison. This is necessary for some databases that do not preserve row
@@ -318,7 +374,7 @@ test_roundtrip <- function(con = DBItest:::connect(DBItest:::get_default_context
       datetime = as.POSIXct(as.numeric(iris$Petal.Length * 10), origin = "2016-01-01", tz = "UTC"),
       date = as.Date(iris$Sepal.Width * 100, origin = Sys.time()),
       time = hms::hms(seconds = sample.int(24 * 60 * 60, NROW(iris))),
-      binary = blob::as.blob(lapply(seq_len(NROW(iris)), function(x) as.raw(sample(0:100, size = sample(0:25, 1))))),
+      binary = blob::as_blob(lapply(seq_len(NROW(iris)), function(x) as.raw(sample(0:100, size = sample(0:25, 1))))),
       integer = as.integer(iris$Petal.Width * 100),
       double = iris$Sepal.Length,
       character = as.character(iris$Species),

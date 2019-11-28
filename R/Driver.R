@@ -45,6 +45,8 @@ setMethod(
 #' timezone that is _not_ 'UTC'. If the database is in your local timezone set
 #' to `Sys.timezone()`. See [OlsonNames()] for a complete list of available
 #' timezones on your system.
+#' @param timezone_out The time zone returned to R. Useful if you want the
+#' timezone returned to R is _not_ 'UTC'.
 #' @param encoding The text encoding used on the Database. If the database is
 #' not using UTF-8 you will need to set the encoding to get accurate re-encoding.
 #' See [iconvlist()] for a complete list of available encodings on your system.
@@ -83,6 +85,7 @@ setMethod(
     dsn = NULL,
     ...,
     timezone = "UTC",
+    timezone_out = "UTC",
     encoding = "",
     bigint = c("integer64", "integer", "numeric", "character"),
     timeout = 10,
@@ -98,6 +101,7 @@ setMethod(
       dsn = dsn,
       ...,
       timezone = timezone,
+      timezone_out = timezone_out,
       encoding = encoding,
       bigint = bigint,
       timeout = timeout,
@@ -121,7 +125,7 @@ setMethod(
 
             # notify if this is an assignment we can replay
             on_connection_opened(eval(expr[[2]]), paste(
-              c("library(odbc)", deparse(expr)), collapse = "\n"))
+              c("library(DBI)", deparse(expr)), collapse = "\n"))
           }
         }, error = function(e) {
           warning("Could not notify connection observer. ", e$message, call. = FALSE)
@@ -154,14 +158,29 @@ setMethod(
     odbcDataType(dbObj, obj, ...)
   })
 
+odbc_data_type_df <- function(dbObj, obj, ...) {
+  res <- character(NCOL(obj))
+  nms <- names(obj)
+  for (i in seq_along(obj)) {
+    tryCatch(
+      res[[i]] <- odbcDataType(con = dbObj, obj[[i]]),
+      error = function(e) {
+        if (conditionMessage(e) == "Unsupported type") {
+          stop("Column '", nms[[i]], "' is of unsupported type: '", object_type(obj[[i]]), "'", call. = FALSE)
+        } else {
+          stop(e)
+        }
+      }
+    )
+  }
+  names(res) <- nms
+  res
+}
+
 #' @rdname OdbcDriver
 #' @inheritParams DBI::dbDataType
 #' @export
-setMethod(
-  "dbDataType", c("OdbcDriver", "data.frame"),
-  function(dbObj, obj, ...) {
-    vapply(obj, odbcDataType, con = dbObj, FUN.VALUE = character(1), USE.NAMES = TRUE)
-  })
+setMethod("dbDataType", c("OdbcDriver", "data.frame"), odbc_data_type_df)
 
 #' @rdname OdbcDriver
 #' @inheritParams DBI::dbIsValid
