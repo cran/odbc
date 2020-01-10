@@ -1,12 +1,12 @@
-fb65b94039bbc8cef152145ef43bb58f *DESCRIPTION
+24a0be42786be4721c1e0c61ed018d95 *DESCRIPTION
 d3d2f503f5c96ac395a270e7c295ec0b *LICENSE
 f7366db6b979765b02bbc650447d2ab0 *NAMESPACE
-5be78de8f24affda3a4203557b797f06 *NEWS.md
+c0c4946c01a226d63452ab91013c7075 *NEWS.md
 3d3d295a3979ae8f757021fd9cbd3615 *R/Connection.R
 7f3a822cccb9a183da4dc1c0329783fd *R/DataTypes.R
 85a38839d24aad924dc594d3cacef650 *R/Driver.R
 ea59344e70acffeaf567f9859dbb0940 *R/RcppExports.R
-2684f6a1507a7b10f50a543d7fa7f01e *R/Result.R
+4c671bfac4adb7529e22ee0b124ba670 *R/Result.R
 b305447a0ef4cf4f8d4b1ce9c974d5b7 *R/Table.R
 94270850241679fcdb479de3c0ef8491 *R/Viewer.R
 f413811871540d77267d4e2c29f9e8d9 *R/db.R
@@ -15,9 +15,9 @@ fe1b2df9042ccf14f76f1eb981938db7 *R/hidden.R
 ac739f3d5e58c33cae0c52c6b6c9ec46 *R/utils.R
 d6c0792978a79e5d8d5d8bb8d974eee0 *R/zzz.R
 c86ef5fe57e28cab112866cf3bbfde7b *README.md
-298445156c9331ffe9235f6bb3602ab5 *build/odbc.pdf
+7ee55ebb71ff1a703b31bcfd3ca55ce9 *build/odbc.pdf
 12d1848ebfc60eaa57a94ea963b90462 *cleanup
-10fb2bed0f9b0d2e673471b8038355da *configure
+f1b1a2e56fe5632522659703d8c655ad *configure
 d41d8cd98f00b204e9800998ecf8427e *configure.win
 b2cd2dc1e317ffdc68fd30b1796fa2b1 *inst/COPYING
 e6eeb94f7d7eacd07235088ff269efc5 *inst/icons/edit-sql.png
@@ -26,7 +26,7 @@ f64ce9f387502e69d4af3248de9a0100 *man/OdbcConnection.Rd
 9764f9fd11dc84ef9e78f71771fb4f32 *man/OdbcDriver.Rd
 f3aa99a36c4e9bf216740b3d9aedacac *man/OdbcResult.Rd
 a7b7752eb8c259293f1c07c2b706a99a *man/dbConnect-OdbcDriver-method.Rd
-d052e39b4b3f9f6d170da4d4feb97d06 *man/dbListFields-OdbcConnection-character-method.Rd
+0ef3a63da3511df731d0b77d9e8c177b *man/dbListFields-OdbcConnection-character-method.Rd
 a0eed1222574abc8ab61b1a9f6a99387 *man/dbListTables-OdbcConnection-method.Rd
 3bb74fc05915de2d55479ccef4bb14b2 *man/hidden_aliases.Rd
 df3c25e1a4afab5d3ed0c4ba0e219d52 *man/odbc-package.Rd
@@ -82,7 +82,7 @@ eace63872b984e1c0f33e00a47b87020 *src/cctz/src/time_zone_info.h
 c7740d027bea4cf5b5f3cea1cd9d755b *src/cctz/src/time_zone_posix.h
 9ca60f66437e1b7bf2a18ee1761446d0 *src/cctz/src/tzfile.h
 44a208af4ca2e1a7f19e7092c2927693 *src/condition.h
-3b43a5f5719e58b360e7774cf1fd7f1c *src/connection.cpp
+208225071e12702d91794fcc58c8b45b *src/connection.cpp
 d1f4bb85217a1e21bb594090e4380162 *src/integer64.h
 f29d02f606d6d0f1e1dd74fc558c6a0d *src/nanodbc/nanodbc.cpp
 0eaded3e0e150ee7995158d46ee7a1c4 *src/nanodbc/nanodbc.h
@@ -98,7 +98,7 @@ c8d8204f833f26efa421bdaa1f6afd40 *src/sql_types.h
 8e3a6ed91b4a64a6c121a246f91c6dec *tests/testthat/helper.R
 63bedf97a1d644fe799095fbcd8d565d *tests/testthat/test-MySQL.R
 ccdb72632884547be6ab3e25f715d1ef *tests/testthat/test-PostgreSQL.R
-d8c41aeea3f9d9f41fe2b08cb54eec85 *tests/testthat/test-SQLServer.R
+157db63e332ca480ab88cbc32b33a112 *tests/testthat/test-SQLServer.R
 a2175a2586a180dc7af493d7a218c787 *tests/testthat/test-SQLite.R
 fa503f845d564c9281f89e88a607b0c5 *tests/testthat/test-drivers.R
 607661179be0a2752e262ad0250b0da8 *tests/testthat/test-show.R

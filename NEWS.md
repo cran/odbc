@@ -1,3 +1,9 @@
+# odbc 1.2.2
+
+* The configure script now again uses iodbc-config on macOS, if available.
+
+* Fix errors with drivers who do not fully implement SQLGetInfo (#325).
+
 # odbc 1.2.1
 
 * Fix the unicode character width issues with the macOS odbc CRAN binary. (#283)
