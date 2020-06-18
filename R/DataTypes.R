@@ -309,20 +309,47 @@ object_type <- function(obj) {
   if (is.factor(obj)) return("factor")
   if (is(obj, "POSIXct")) return("datetime")
   if (is(obj, "Date")) return("date")
-  if (is(obj, "blob")) return("binary")
+  if (is_blob(obj)) return("binary")
   if (is(obj, "difftime")) return("time")
 
   return(typeof(obj))
 }
 
+is_blob <- function(obj) {
+  if (is(obj, "blob")) return(TRUE)
+  if (is.object(obj) && any(class(obj) != "AsIs")) return(FALSE)
+  if (!is.list(obj)) return(FALSE)
+
+  # Assuming raw inside naked lists if the first non-NULL element is raw,
+  # not checking the other elements
+  for (i in seq_along(obj)) {
+    x <- obj[[i]]
+    if (!is.null(x) && !is.raw(x)) return(FALSE)
+  }
+
+  TRUE
+}
+
 varchar <- function(x, type = "varchar") {
-  max_length <- max(nchar(as.character(x)), na.rm = TRUE)
-  paste0(type, "(", max(255, max_length), ")")
+  # at least 255 characters, use max if more than 8000:
+  max_length <- max(c(255, nchar(as.character(x))), na.rm = TRUE)
+
+  if (max_length > 8000) {
+    max_length <- "max"
+  }
+
+  paste0(type, "(", max_length, ")")
 }
 
 varbinary <- function(x, type = "varbinary") {
-  max_length <- max(lengths(x), na.rm = TRUE)
-  paste0(type, "(", max(255, max_length), ")")
+  # at least 255 bytes, use max if more than 8000:
+  max_length <- max(c(255, lengths(x)), na.rm = TRUE)
+
+  if (max_length > 8000) {
+    max_length <- "max"
+  }
+
+  paste0(type, "(", max_length, ")")
 }
 
 #' Test round tripping a simple table
