@@ -50,3 +50,19 @@ parse_size <- function(x) {
 
   stop(sprintf("`%s` is not a valid size:\n  Must be a positive integer.", as.character(nme)), call. = FALSE)
 }
+
+id_field <- function(id, field, default = NULL) {
+  if (field %in% names(id@name)) {
+    id@name[[field]]
+  } else {
+    default
+  }
+}
+
+check_n <- function(n) {
+  if (length(n) != 1) stop("`n` must be scalar", call. = FALSE)
+  if (n < -1) stop("`n` must be nonnegative or -1", call. = FALSE)
+  if (is.infinite(n)) n <- -1
+  if (trunc(n) != n) stop("`n` must be a whole number", call. = FALSE)
+  n
+}

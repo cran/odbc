@@ -31,6 +31,7 @@ odbc_result::odbc_result(
       execute();
     }
   }
+  unbind_if_needed();
 }
 std::shared_ptr<odbc_connection> odbc_result::connection() const {
   return std::shared_ptr<odbc_connection>(c_);
@@ -162,6 +163,7 @@ void odbc_result::bind_list(
   }
   bound_ = true;
 }
+
 Rcpp::DataFrame odbc_result::fetch(int n_max) {
   if (!bound_) {
     Rcpp::stop("Query needs to be bound before fetching");
@@ -175,6 +177,23 @@ Rcpp::DataFrame odbc_result::fetch(int n_max) {
     c_->set_current_result(nullptr);
     throw;
   }
+}
+
+void odbc_result::unbind_if_needed() {
+  bool found_unbound = false;
+
+  if (c_->get_data_any_order())
+    return;
+  try {
+    for (short i = 0; i < num_columns_; ++i) {
+      found_unbound = found_unbound || !r_->is_bound(i);
+      if (found_unbound) {
+        r_->unbind(i);
+      }
+    }
+  } catch (const nanodbc::database_error& e) {
+    Rcpp::warning("Was unable to unbind some nanodbc buffers");
+  };
 }
 
 int odbc_result::rows_fetched() {
@@ -336,7 +355,7 @@ nanodbc::date odbc_result::as_date(double value) {
   using namespace std::chrono;
   auto utc_time = system_clock::from_time_t(static_cast<std::time_t>(value));
 
-  auto civil_time = cctz::convert(utc_time, c_->timezone());
+  auto civil_time = cctz::convert(utc_time, cctz::utc_time_zone());
   dt.day = civil_time.day();
   dt.month = civil_time.month();
   dt.year = civil_time.year();
@@ -528,8 +547,8 @@ void odbc_result::add_classes(
     case raw_t:
       // FIXME: Use new_blob()
       x.attr("ptype") = Rcpp::RawVector::create();
-      x.attr("class") =
-          Rcpp::CharacterVector::create("blob", "vctrs_list_of", "vctrs_vctr", "list");
+      x.attr("class") = Rcpp::CharacterVector::create(
+          "blob", "vctrs_list_of", "vctrs_vctr", "list");
       break;
     default:
       break;
@@ -726,6 +745,15 @@ Rcpp::List odbc_result::result_to_dataframe(nanodbc::result& r, int n_max) {
     ++rows_fetched_;
     if (rows_fetched_ % 16384 == 0) {
       Rcpp::checkUserInterrupt();
+    }
+
+    if (complete_) {
+      while (r.next_result()) {
+        if (r.next()) {
+          complete_ = false;
+          break;
+        }
+      };
     }
   }
 

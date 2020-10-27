@@ -7,7 +7,6 @@ test_that("SQLServer", {
       "package_name", # Not an error
       NULL))
   DBItest::test_driver(c(
-    "connect_format",
     "connect_bigint_integer",
     "connect_bigint_character",
     "connect_bigint_integer64",
@@ -15,23 +14,15 @@ test_that("SQLServer", {
   DBItest::test_connection(c(
       NULL))
   DBItest::test_result(c(
-      "fetch_n_bad",                     # TODO
-      "fetch_n_good_after_bad",          # TODO
-      "fetch_no_return_value",           # TODO
-      "get_query_n_bad",                     # todo
-      "get_query_good_after_bad_n",                     # todo
-      "get_query_n_zero_rows",                     # todo
-      "get_query_n_multi_row_inf",
+      "get_query_n_zero_rows",
       "get_query_n_incomplete",
-      "get_query_params",
       "fetch_no_return_value",           # TODO
-      "fetch_n_multi_row_inf",
-      ".*clear_result_.*_statement", # TODO
+      "clear_result_return_statement",
+      "cannot_clear_result_twice_statement",
       "send_statement.*", # Invalid CTAS syntax
       "execute_atomic", # Invalid CTAS syntax
       "execute_immediate", # Invalid CTAS syntax
       "data_character", # I think the test is bad
-      "data_logical$", # Not an error
       "data_64_bit_numeric_warning", # Test does not explicitly set 64 bit columns
       "data_64_bit_lossless", # Test does not explicitly set 64 bit columns
       "data_date.*", # Date not a builtin function name
@@ -42,38 +33,21 @@ test_that("SQLServer", {
   DBItest::test_sql(c(
       "append_roundtrip_.*", # TODO
       "quote_string_na_is_null", # Invalid syntax
-      "quote_identifier_vectorized", # TODO
-      "quote_identifier", # Invalid Syntax
-      "quote_identifier_special", # TODO
-      "remove_table_temporary_arg",
       "remove_table_missing_succeed",
-      "remove_table_missing_succeed",
-      "temporary_table", # Unsupported
       "roundtrip_character", # #10
       "roundtrip_character_native", # Possible false positive
       "roundtrip_factor", # #10
       "roundtrip_time", #TODO
-      "roundtrip_date", # unsupported
-      "roundtrip_quotes", # TODO, not sure why this is failing
       "roundtrip_timestamp", # We explicitly want to set tzone to UTC regardless of input
       "write_table_error", # TODO
-      "list_tables", # TODO
-      ".*_table_name", # TODO
-      "append_table_error", # TODO
       "quote_string_roundtrip",
       "quote_literal_roundtrip",
       "quote_literal_na_is_null",
       "quote_literal_na_is_null",
-      "unquote_identifier_vectorized",
-      "read_table_empty",
       "create_table_error",
       "create_temporary_table",
-      "write_table_append_incompatible",
       "roundtrip_64_bit_roundtrip",
-      "roundtrip_field_types",
       "write_table_row_names_default",
-      "remove_table_temporary",
-      "list_objects_features",
       "list_fields_wrong_table",
       "list_fields_quoted",
       "list_fields_object",
@@ -151,9 +125,32 @@ test_that("SQLServer", {
     # dbWriteTable errors if field.types don't exist (#271)
     con <- DBItest:::connect(DBItest:::get_default_context())
 
-    expect_error(
-      dbWriteTable(con, "foo", iris, field.types = list(foo = "VARCHAR(10)", bar = "double")),
-      "Columns in `field.types` must be in the input"
+    on.exit(dbRemoveTable(con, "foo"), add = TRUE)
+    expect_warning(
+      dbWriteTable(con, "foo", iris, field.types = list(bar = "[int]")),
+      "Some columns in `field.types` not in the input, missing columns:"
     )
+  })
+
+  local({
+    con <- DBItest:::connect(DBItest:::get_default_context())
+    tblName <- "test_out_of_order_blob"
+
+    values <- data.frame(
+      c1 = 1,
+      c2 = "this is varchar max",
+      c3 = 11,
+      c4 = "this is text",
+      stringsAsFactors = FALSE)
+    dbWriteTable(con, tblName, values, field.types = list(c1 = "INT", c2 = "VARCHAR(MAX)", c3 = "INT", c4 = "TEXT"))
+    on.exit(dbRemoveTable(con, tblName))
+    received <- DBI::dbReadTable(con, tblName)
+    expect_equal(values, received)
+  })
+
+  test_that("dates should always be interpreted in the system time zone (#398)", {
+    con <- DBItest:::connect(DBItest:::get_default_context(), timezone = "America/Chicago")
+    res <- dbGetQuery(con, "SELECT ?", params = as.Date("2019-01-01"))
+    expect_equal(res[[1]], "2019-01-01")
   })
 })

@@ -1,3 +1,26 @@
+# odbc 1.3.0
+
+## Major changes
+* odbc can now be compiled again with Rtools35 (gcc 4.9.3) on Windows (#383)
+* `invalid descriptor` errors from drivers such as Microsoft SQLServer driver and the freeTDS driver which do not support out of order retrieval are now avoided.
+  This is done by unbinding any nanodbc buffer past the long column.
+  Performance for the unbound columns in these cases will be reduced, but the retrieval will work without error (@detule, #381)
+* `dbBind()` and `dbFetch()` now support multiple result sets (@vkapartzianis, #234)
+
+## Minor improvements and fixes
+* New `dbAppendTable()` method for OdbcConnection objects (#335)
+* `dbQuoteIdentifier()` now uses the input names (if any).
+* `dbWriteTable()` and `dbBind()` now default to a `batch_rows` of `NA`, which sets the batch size to be the length of the input.
+  This avoids problems with drivers that don't support batch sizes larger than the input size.
+  To restore the behavior prior to this release pass `batch_rows = 1024` or set `options(odbc.batch_rows = 1024)` (#391).
+* `dbWriteTable()` now handles `data.table::IDate()` objects (#388)
+* `dbWriteTable(field.types=)` now issues a warning rather than an error for missing columns (#342)
+* `odbcConnectionColumns()` now works as intended with `DBI::Id()` objects (#389)
+* `dbFetch()` now verifies that `n` is a valid input.
+* Dates are now always interpreted as being in the database's local time zone, regardless of the `timezone` parameter (#398)
+* Oracle connections now support `Date` and `POSIXct` types via `DATE` and `TIMESTAMP` data types (#324, #349, #350)
+* Oracle connections now use VARCHAR2 rather than VARCHAR, as recommended by Oracle's documentation (#189)
+
 # odbc 1.2.3
 
 * `dbWriteTable()` now executes immediately, which fixes issues with temporary tables and the FreeTDS SQL Server driver (@krlmlr).

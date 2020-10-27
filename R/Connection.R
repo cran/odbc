@@ -123,10 +123,10 @@ setMethod(
   c("OdbcConnection", "Id"),
   function(conn, name, column_name = NULL) {
 
-    odbcConnectionColumns(conn,
-      name = name@name[["table"]],
-      catalog_name = name@name[["catalog"]],
-      schema_name = name@name[["schema"]],
+    connection_sql_columns(conn@ptr,
+      table_name = id_field(name, "table"),
+      catalog_name = id_field(name, "catalog"),
+      schema_name = id_field(name, "schema"),
       column_name = column_name)
   }
 )
@@ -258,7 +258,10 @@ setMethod(
     if (nzchar(conn@quote)) {
       x <- gsub(conn@quote, paste0(conn@quote, conn@quote), x, fixed = TRUE)
     }
-    DBI::SQL(paste(conn@quote, encodeString(x), conn@quote, sep = ""))
+    nms <- names(x)
+    res <- DBI::SQL(paste(conn@quote, encodeString(x), conn@quote, sep = ""))
+    names(res) <- nms
+    res
   })
 
 #' @rdname OdbcConnection
