@@ -1,3 +1,7 @@
+# odbc 1.3.2
+
+* New `odbcDataType.Snowflake()` method for Snowflake databases. (@edgararuiz, #451)
+
 # odbc 1.3.1
 
 * Fixed warnings about anonymous unions (@detule, #440)
@@ -15,6 +19,7 @@
   and ends with `ON COMMIT PRESERVE ROWS` (DB2's default behavior is
   `ON COMMIT DELETE ROWS`, which results in the inserted data being
   deleted as soon as `dbWriteTable` completes). (@rnorberg, #426)
+* Fixed RStudio Connections Pane when working with a database that has only one catalog or one schema. (@meztez, #444)
 
 # odbc 1.3.0
 

@@ -1,6 +1,6 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.3.1
+Version: 1.3.2
 Authors@R: 
     c(person(given = "Jim",
              family = "Hester",
@@ -30,7 +30,6 @@ Suggests: covr, DBItest, magrittr, RSQLite, testthat, tibble
 LinkingTo: Rcpp
 ByteCompile: true
 Encoding: UTF-8
-LazyData: true
 RoxygenNote: 7.1.1
 SystemRequirements: C++11, GNU make, An ODBC3 driver manager and
         drivers.
@@ -38,7 +37,7 @@ Collate: 'odbc.R' 'Driver.R' 'Connection.R' 'DataTypes.R'
         'RcppExports.R' 'Result.R' 'Table.R' 'Viewer.R' 'db.R'
         'hidden.R' 'utils.R' 'zzz.R'
 NeedsCompilation: yes
-Packaged: 2021-02-26 16:19:22 UTC; jhester
+Packaged: 2021-04-01 14:42:07 UTC; jhester
 Author: Jim Hester [aut, cre],
   Hadley Wickham [aut],
   Oliver Gjoneski [ctb] (detule),
@@ -47,4 +46,4 @@ Author: Jim Hester [aut, cre],
   RStudio [cph, fnd]
 Maintainer: Jim Hester <jim.hester@rstudio.com>
 Repository: CRAN
-Date/Publication: 2021-03-16 15:30:05 UTC
+Date/Publication: 2021-04-03 14:30:03 UTC
