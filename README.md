@@ -164,7 +164,8 @@ con <- dbConnect(odbc::odbc(),
 ```
 
 Alternatively you can pass a complete connection string as the
-`.connection_string` argument. 'https://www.connectionstrings.com' is a useful resource that
+`.connection_string` argument. [The Connection Strings
+Reference](https://www.connectionstrings.com) is a useful resource that
 has example connection strings for a large variety of databases.
 
 ``` r
@@ -312,7 +313,7 @@ The *odbc* package is often much faster than the existing
 
 Reading a table from a SQL Server database with the ‘flights’ dataset
 (336,776 rows, 19 columns) of the package
-[nytflights13](https://github.com/hadley/nycflights13).
+[nytflights13](https://github.com/tidyverse/nycflights13).
 
 ``` r
 # First using RODBC / RODBCDBI
