@@ -173,6 +173,43 @@ test_that("SQLServer", {
     expect_equal(as.double(values[[6]]), as.double(received[[6]]))
   })
 
+  local({
+    con <- DBItest:::connect(DBItest:::get_default_context())
+    input <- DBI::SQL(c(
+      "testtable",
+      "[testtable]",
+      "[\"testtable\"]",
+      "testta[ble",
+      "testta]ble",
+      "[testschema].[testtable]",
+      "[testschema].testtable",
+      "[testdb].[testschema].[testtable]",
+      "[testdb].[testschema].testtable" ))
+    expected <- c(
+      DBI::Id(table = "testtable"),
+      DBI::Id(table = "testtable"),
+      DBI::Id(table = "testtable"),
+      DBI::Id(table = "testta[ble"),
+      DBI::Id(table = "testta]ble"),
+      DBI::Id(schema = "testschema", table = "testtable"),
+      DBI::Id(schema = "testschema", table = "testtable"),
+      DBI::Id(catalog = "testdb", schema = "testschema", table = "testtable"),
+      DBI::Id(catalog = "testdb", schema = "testschema", table = "testtable"))
+    expect_identical(DBI::dbUnquoteIdentifier(con, input), expected)
+  })
+
+  test_that("odbcPreviewObject", {
+    tblName <- "test_preview"
+    con <- DBItest:::connect(DBItest:::get_default_context())
+    dbWriteTable(con, tblName, data.frame(a = 1:10L))
+    on.exit(dbRemoveTable(con, tblName))
+    # There should be no "Pending rows" warning
+    expect_no_warning({
+      res <- odbcPreviewObject(con, rowLimit = 3, table = tblName)
+    })
+    expect_equal(nrow(res), 3)
+  })
+
   test_that("dates should always be interpreted in the system time zone (#398)", {
     con <- DBItest:::connect(DBItest:::get_default_context(), timezone = "America/Chicago")
     res <- dbGetQuery(con, "SELECT CAST(? AS date)", params = as.Date("2019-01-01"))
