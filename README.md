@@ -11,7 +11,7 @@ developed.](http://www.repostatus.org/badges/latest/active.svg)](https://www.rep
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/odbc)](https://cran.r-project.org/package=odbc)
 [![R-CMD-check](https://github.com/r-dbi/odbc/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/r-dbi/odbc/actions/workflows/R-CMD-check.yaml)
 [![Coverage
-Status](https://img.shields.io/codecov/c/github/r-dbi/odbc/master.svg)](https://codecov.io/github/r-dbi/odbc?branch=master)
+Status](https://img.shields.io/codecov/c/github/r-dbi/odbc/master.svg)](https://app.codecov.io/github/r-dbi/odbc?branch=main)
 <!-- badges: end -->
 
 The goal of the odbc package is to provide a DBI-compliant interface to
@@ -46,7 +46,7 @@ builds on the [nanodbc](https://nanodbc.github.io/nanodbc/) C++ library.
 ## Installation
 
 For Unix and MacOS ODBC drivers should be compiled against
-[unixODBC](http://www.unixodbc.org/). Drivers compiled against
+[unixODBC](https://www.unixodbc.org/). Drivers compiled against
 [iODBC](https://www.iodbc.org/) *may* also work, but are not fully
 supported.
 
@@ -202,14 +202,35 @@ There are two different files used to setup the DSN information.
 - `odbc.ini` - which defines connection options
 
 The DSN configuration files can be defined globally for all users of the
-system, often at `/etc/odbc.ini` or `/opt/local/etc/odbc.ini`, the exact
-location depends on what option was used when compiling unixODBC.
-`odbcinst -j` can be used to find the exact location. Alternatively the
-`ODBCSYSINI` environment variable can be used to specify the location of
-the configuration files. Ex. `ODBCSYSINI=~/ODBC`
+system, often at `/etc/odbc.ini`, `/opt/local/etc/odbc.ini` or
+`/opt/homebrew/etc/odbc.ini`, the exact location depends on what option
+was used when compiling unixODBC. `odbcinst -j` can be used to find the
+exact location. Alternatively the `ODBCSYSINI` environment variable can
+be used to specify the location of the configuration files. Ex.
+`ODBCSYSINI=~/ODBC`
 
 A local DSN file can also be used with the files `~/.odbc.ini` and
 `~/.odbcinst.ini`.
+
+##### MacOS aarch64
+
+If ODBC has trouble locating your system data source names, you may need
+to override the default location where ODBC looks for your configuration
+files. You can use either of the options below to specify the location
+of your DSN configuration files.
+
+###### Option 1: Save Setting to `~/.Renviron`
+
+1.  Create or open the `~/.Renviron` file.
+2.  Add `ODBCSYSINI=/opt/homebrew/etc` to your `~/.Renviron` file and
+    save your changes.
+3.  Restart any open R sessions before connecting to a database.
+
+###### Option 2: Set `ODBCSYSINI` Environment Variable
+
+1.  Set the `ODBCSYSINI` environment variable, eg.
+    `ODBCSYSINI=/opt/homebrew/etc`.
+2.  Restart any open R sessions before connecting to a database.
 
 ##### odbcinst.ini
 
@@ -222,6 +243,17 @@ Driver          = /usr/local/lib/psqlodbcw.so
 
 [SQLite Driver]
 Driver          = /usr/local/lib/libsqlite3odbc.dylib
+```
+
+On MacOS aarch64 machines, drivers installed via homebrew are in a
+different location, as seen below.
+
+``` ini
+[PostgreSQL Driver]
+Driver          = /opt/homebrew/lib/psqlodbcw.so
+
+[SQLite Driver]
+Driver          = /opt/homebrew/lib/libsqlite3odbc.dylib
 ```
 
 ##### odbc.ini
@@ -240,12 +272,12 @@ Password            = password
 Port                = 5432
 
 [SQLite]
-Driver          = SQLite Driver
-Database=/tmp/testing
+Driver              = SQLite Driver
+Database            = /tmp/testing
 ```
 
 See also: [unixODBC without the
-GUI](http://www.unixodbc.org/odbcinst.html) for more information and
+GUI](https://www.unixodbc.org/odbcinst.html) for more information and
 examples.
 
 ## Usage

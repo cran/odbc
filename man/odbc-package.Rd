@@ -9,6 +9,7 @@ A DBI-compatible interface to ODBC databases.
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://r-dbi.github.io/odbc/}
   \item \url{https://github.com/r-dbi/odbc}
   \item \url{https://db.rstudio.com}
   \item Report bugs at \url{https://github.com/r-dbi/odbc/issues}
@@ -21,11 +22,11 @@ Useful links:
 Authors:
 \itemize{
   \item Jim Hester
+  \item Oliver Gjoneski
 }
 
 Other contributors:
 \itemize{
-  \item Oliver Gjoneski (detule) [contributor]
   \item lexicalunit (nanodbc library) [copyright holder]
   \item Google Inc. (cctz library) [copyright holder]
   \item RStudio [copyright holder, funder]
