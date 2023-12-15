@@ -16,6 +16,8 @@ odbc_result::odbc_result(
       bound_(false),
       output_encoder_(Iconv(c_->encoding(), "UTF-8")) {
 
+  c_->cancel_current_result(false);
+
   if (immediate) {
     s_ = std::make_shared<nanodbc::statement>();
     bound_ = true;
@@ -208,7 +210,7 @@ bool odbc_result::complete() {
 bool odbc_result::active() { return c_->is_current_result(this); }
 
 odbc_result::~odbc_result() {
-  if (c_ != nullptr) {
+  if (c_ != nullptr && active()) {
     try {
       c_->set_current_result(nullptr);
     } catch (...) {

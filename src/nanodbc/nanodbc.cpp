@@ -400,7 +400,7 @@ recent_error(SQLHANDLE handle, SQLSMALLINT handle_type, long& native, std::strin
         }
 
         if (!result.empty())
-            result += ' ';
+            result += '\n';
 
         result += nanodbc::string_type(sql_message.begin(), sql_message.end());
         i++;
@@ -411,7 +411,7 @@ recent_error(SQLHANDLE handle, SQLSMALLINT handle_type, long& native, std::strin
     state = std::string(&sql_state[0], &sql_state[arrlen(sql_state) - 1]);
     native = native_error;
     std::string status = state;
-    status += ": ";
+    status += "\n";
     status += rvalue;
 
     // some drivers insert \0 into error messages for unknown reasons
@@ -1265,9 +1265,8 @@ string_type connection::connection_impl::database_name() const
 }
 
 template string_type connection::get_info(short info_type) const;
-template unsigned short connection::get_info(short info_type) const;
-template uint32_t connection::get_info(short info_type) const;
-template uint64_t connection::get_info(short info_type) const;
+template SQLUSMALLINT connection::get_info(short info_type) const;
+template SQLUINTEGER connection::get_info(short info_type) const;
 
 } // namespace nanodbc
 
@@ -3421,7 +3420,6 @@ std::unique_ptr<T, std::function<void(T*)>> result::result_impl::ensure_pdata(sh
         col.cbdata_[static_cast<size_t>(rowset_position_)] = (SQLINTEGER)SQL_NULL_DATA;
     if (!success(rc))
         NANODBC_THROW_DATABASE_ERROR(stmt_.native_statement_handle(), SQL_HANDLE_STMT);
-    NANODBC_ASSERT(ValueLenOrInd == (SQLLEN)buffer_size);
 
     // Return a traditional unique_ptr since we just allocated this buffer, and
     // we most certainly want this memory returned to the heap when the result
