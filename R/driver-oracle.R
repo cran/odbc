@@ -9,7 +9,7 @@ NULL
 #' @export
 #' @rdname Oracle
 #' @keywords internal
-setClass("Oracle", contains = "OdbcDriver")
+setClass("Oracle", contains = "OdbcConnection")
 
 #' @rdname Oracle
 setMethod("sqlCreateTable", "Oracle",
@@ -135,6 +135,7 @@ odbcDataType.Oracle <- function(con, obj, ...) {
     datetime = "TIMESTAMP",
     binary = "BLOB",
     integer = "INTEGER",
+    int64 = "INTEGER",
     double = "BINARY_DOUBLE",
     character = "VARCHAR2(255)",
     logical = "DECIMAL",
