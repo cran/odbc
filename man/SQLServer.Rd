@@ -7,6 +7,7 @@
 \alias{isTempTable,Microsoft SQL Server,character-method}
 \alias{isTempTable,Microsoft SQL Server,SQL-method}
 \alias{dbExistsTable,Microsoft SQL Server,character-method}
+\alias{dbListTables,Microsoft SQL Server-method}
 \alias{dbExistsTable,Microsoft SQL Server,Id-method}
 \alias{dbExistsTable,Microsoft SQL Server,SQL-method}
 \alias{odbcConnectionSchemas,Microsoft SQL Server-method}
@@ -39,10 +40,17 @@ since they live in a different catalog. This method provides a special
 case for temporary tables, as identified by \code{isTempTable()}.
 }
 
+\subsection{\code{dbListTables()}}{
+
+The default implementation reports temporary tables as non-existent
+when a \code{catalog_name} isn't supplied since they live in a different catalog.
+This method provides a special case for temporary tables.
+}
+
 \subsection{\code{odbcConnectionSchemas}}{
 
-Call catalog-specific \code{sp_tables} to make sure we list the schemas in the
-appropriate database/catalog.
+Method for an internal function. Calls catalog-specific \code{sp_tables} to make
+sure we list the schemas in the appropriate database/catalog.
 }
 
 \subsection{\code{sqlCreateTable()}}{

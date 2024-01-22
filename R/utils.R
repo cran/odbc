@@ -32,7 +32,7 @@ enc2iconv <- function(x, to, ...) {
 }
 
 choices_rd <- function(x) {
-  paste0(collapse = ", ", paste0("\\sQuote{", x, "}"))
+  paste0(collapse = ", ", paste0("'", x, "'"))
 }
 
 lengths <- function(x) {
@@ -53,11 +53,31 @@ parse_size <- function(x) {
   )
 }
 
-id_field <- function(id, field, default = NULL) {
-  if (field %in% names(id@name)) {
-    id@name[[field]]
+id_field <- function(id,
+                     field = c("catalog", "schema", "table"),
+                     error_call = caller_env()) {
+  arg_match(field, error_call = error_call)
+
+  if (length(id@name) == 1) {
+    switch(field,
+      catalog = NULL,
+      schema = NULL,
+      table = id@name[[1]],
+    )
+  } else if (length(id@name) == 2) {
+    switch(field,
+      catalog = NULL,
+      schema = id@name[[1]],
+      table = id@name[[2]],
+    )
+  } else if (length(id@name) == 3) {
+    switch(field,
+      catalog = id@name[[1]],
+      schema = id@name[[2]],
+      table = id@name[[3]],
+    )
   } else {
-    default
+    abort("Identifier must be length 1, 2, or 3.", call = error_call)
   }
 }
 
@@ -83,6 +103,13 @@ convertWildCards <- function(val) {
   gsub("_", "(.)", val)
 }
 
+# Will return " AND key [= | LIKE] value"
+# where "=" or "LIKE" is chosen depending
+# on the the `exact` argument, and whether
+# the `value` contains any wild card characters.
+#
+# Note, wild cards are not escaped in `value`
+# as part of this call.
 getSelector <- function(key, value, exact) {
   if (is.null(value)) {
     return("")
@@ -91,9 +118,6 @@ getSelector <- function(key, value, exact) {
   if ((value == "%" || !exact) &&
     isPatternValue(value)) {
     comp <- " LIKE "
-  }
-  if (exact && (value != "%")) {
-    value <- escapePattern(value)
   }
   value <- paste0("'", value, "'")
 
@@ -118,3 +142,26 @@ is_windows <- function() {
 }
 
 compact <- function(x) x[!vapply(x, is.null, logical(1))]
+
+set_odbcsysini <- function() {
+  odbcsysini <- Sys.getenv("ODBCSYSINI")
+  if (!identical(odbcsysini, "")) {
+    return(invisible())
+  }
+
+  tryCatch(
+    {
+      path <- dirname(odbcListConfig()$drivers)
+      Sys.setenv(ODBCSYSINI = path)
+    },
+    error = function(err) NULL
+  )
+
+  invisible()
+}
+
+random_name <- function(prefix = "") {
+  vals <- c(letters, LETTERS, 0:9)
+  name <- paste0(sample(vals, 10, replace = TRUE), collapse = "")
+  paste0(prefix, "odbc_", name)
+}

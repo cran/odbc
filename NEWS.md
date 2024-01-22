@@ -1,3 +1,45 @@
+# odbc 1.4.2
+
+* `dbAppendTable()` Improve performance by checking existence once (#691).
+
+* `dbConnect()` no longer automatically escapes suspicious characters
+  (since there doesn't seem to be a consistent way to do this across drivers)
+  but instead points you to `quote_value()` which applies a heuristic
+  that should work for most drivers (#718).
+
+* New wrapper for `dbExecute()` that sets `immediate = TRUE` if you are 
+  not supplying `params`. That should yield a small speed boost in 
+  many cases (#706).
+
+* `dbSendQuery()` once again defaults to `immediate = FALSE` (since if you're
+  using it instead of `dbGetQuery()` you're likely to be using it with 
+  `dbBind()`). (#726).
+  
+* Deprecated `odbcConnectionColumns()` (in favor of `dbListFields()`), 
+  `odbcConnectionActions()`, and `odbcConnectionIcon()` (@simonpcouch, #699).
+  
+* Backend specific changes:
+
+  * databricks: Fix schema enumeration in connections pane
+    (@detule, #715).
+
+  * Oracle: use more reliable technique to determine user/schema name (#738),
+    and fix `dbExistsTable()` when identifier components contain `_` 
+    (@detule, #712).
+  
+  * SQL Server: improvements to `dbExists()` (@meztez, #724) and 
+    `dbListTables()` (@simonpcouch, #509) for temporary tables.
+    It now uses column type `"BIGINT"` integer64 objects.
+
+  * SQL Server with freetds driver: no longer crashes when executing multiple 
+    queries (@detule, #731).
+
+  * Teradata: Fix usage of `exact` argument in internal methods (@detule, 717).
+
+* On MacOS and Linux, the package will now automatically set the `ODBCSYSINI`
+  environmental variable when using the unixODBC driver manager. `ODBCSYSINI`
+  will not be changed if it exists already (@simonpcouch, #709).
+
 # odbc 1.4.1
 
 * New `odbcListConfig()` lists configuration files on Mac and Linux 
@@ -9,9 +51,6 @@
 
 * SQL Server: correctly enumerate schemas across databases in connections pane
   (@detule, #527).
-
-* SQL Server: now uses column type `"BIGINT"` integer64 objects 
-  (@simonpcouch, #698).
 
 # odbc 1.4.0
 

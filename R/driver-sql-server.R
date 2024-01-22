@@ -72,17 +72,42 @@ setMethod("dbExistsTable", c("Microsoft SQL Server", "character"),
   function(conn, name, ...) {
     stopifnot(length(name) == 1)
     if (isTempTable(conn, name, ...)) {
-      name <- paste0(name, "\\_\\_\\_%")
-      df <- odbcConnectionTables(
-        conn,
-        name,
+      query <- paste0("SELECT OBJECT_ID('tempdb..", name, "')")
+      !is.na(dbGetQuery(conn, query)[[1]])
+    } else {
+      df <- odbcConnectionTables(conn, name = name, ...)
+      NROW(df) > 0
+    }
+  }
+)
+
+#' @description
+#' ## `dbListTables()`
+#' The default implementation reports temporary tables as non-existent
+#' when a `catalog_name` isn't supplied since they live in a different catalog.
+#' This method provides a special case for temporary tables.
+#' @rdname SQLServer
+#' @usage NULL
+setMethod("dbListTables", "Microsoft SQL Server",
+  function(conn,
+           catalog_name = NULL,
+           schema_name = NULL,
+           table_name = NULL,
+           table_type = NULL,
+           ...) {
+    res <- callNextMethod()
+
+    if (is.null(catalog_name) && is.null(schema_name)) {
+      res_temp <- callNextMethod(
+        conn = conn,
         catalog_name = "tempdb",
         schema_name = "dbo"
       )
-    } else {
-      df <- odbcConnectionTables(conn, name = name, ...)
+
+      res <- c(res, res_temp)
     }
-    NROW(df) > 0
+
+    res
   }
 )
 
@@ -108,9 +133,10 @@ setMethod("dbExistsTable", c("Microsoft SQL Server", "SQL"),
 )
 
 #' @description
-#' ## `odbcConnectionSchemas` 
-#' Call catalog-specific `sp_tables` to make sure we list the schemas in the
-#' appropriate database/catalog.
+#' ## `odbcConnectionSchemas`
+#'
+#' Method for an internal function. Calls catalog-specific `sp_tables` to make
+#' sure we list the schemas in the appropriate database/catalog.
 #' @rdname SQLServer
 #' @usage NULL
 setMethod(
