@@ -63,8 +63,13 @@ setMethod("show", "OdbcDriver",
 #'   name for the OdbcConnection object returned from [dbConnect()]. However, if
 #'   the driver does not return a valid value, it can be set manually with this
 #'   parameter.
-#' @param attributes An S4 object of connection attributes that are passed
+#' @param attributes A list of connection attributes that are passed
 #'   prior to the connection being established. See \link{ConnectionAttributes}.
+#' @param interruptible Logical.  If `TRUE` calls to `SQLExecute` and
+#'   `SQLExecuteDirect` can be interrupted when the user sends SIGINT ( ctrl-c ).
+#'   Otherwise, they block.  Defaults to `TRUE` in interactive sessions, and
+#'   `FALSE` otherwise.  It can be set explicitly either by manipulating this
+#'   argument, or by setting the global option `odbc.interruptible`.
 #' @param ... Additional ODBC keywords. These will be joined with the other
 #'   arguments to form the final connection string.
 #'
@@ -167,7 +172,22 @@ setMethod("dbConnect", "OdbcDriver",
       pwd = NULL,
       dbms.name = NULL,
       attributes = NULL,
+      interruptible = getOption("odbc.interruptible", interactive()),
       .connection_string = NULL) {
+    check_string(dsn, allow_null = TRUE)
+    check_string(timezone, allow_null = TRUE)
+    check_string(timezone_out, allow_null = TRUE)
+    check_string(encoding, allow_null = TRUE)
+    arg_match(bigint)
+    check_number_decimal(timeout, allow_null = TRUE, allow_na = TRUE)
+    check_string(driver, allow_null = TRUE)
+    check_string(server, allow_null = TRUE)
+    check_string(database, allow_null = TRUE)
+    check_string(uid, allow_null = TRUE)
+    check_string(pwd, allow_null = TRUE)
+    check_string(dbms.name, allow_null = TRUE)
+    check_bool(interruptible)
+
     con <- OdbcConnection(
       dsn = dsn,
       ...,
@@ -183,6 +203,7 @@ setMethod("dbConnect", "OdbcDriver",
       pwd = pwd,
       dbms.name = dbms.name,
       attributes = attributes,
+      interruptible = interruptible,
       .connection_string = .connection_string
     )
 
@@ -238,14 +259,10 @@ odbc_data_type_df <- function(dbObj, obj, ...) {
   res <- character(NCOL(obj))
   nms <- names(obj)
   for (i in seq_along(obj)) {
-    tryCatch(
+    withCallingHandlers(
       res[[i]] <- odbcDataType(con = dbObj, obj[[i]]),
-      error = function(e) {
-        if (conditionMessage(e) == "Unsupported type") {
-          stop("Column '", nms[[i]], "' is of unsupported type: '", object_type(obj[[i]]), "'", call. = FALSE)
-        } else {
-          stop(e)
-        }
+      error = function(err) {
+        cli::cli_abort("Can't determine type for column {nms[[i]]}.", parent = err, call = quote(odbcDataType()))
       }
     )
   }

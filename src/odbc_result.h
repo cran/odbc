@@ -19,13 +19,24 @@ inline void signal_unknown_field_type(short type, const std::string& name) {
 
 class odbc_error : public Rcpp::exception {
 public:
-  odbc_error(const nanodbc::database_error& e, const std::string& sql)
+  odbc_error(
+      const nanodbc::database_error& e,
+      const std::string& sql,
+      Iconv& output_encoder)
       : Rcpp::exception("", false) {
-    message = std::string(e.what()) + "\n<SQL> '" + sql + "'";
+    std::string m = std::string(e.what());
+    if (sql != "") {
+      m += "\n<SQL> '" + sql + "'";
+    }
+    // #432: [R] expects UTF-8 encoded strings but both nanodbc and sql are
+    // encoded in the database encoding, which may differ from UTF-8
+    message = Rf_translateChar(
+        output_encoder.makeSEXP(m.c_str(), m.c_str() + m.length()));
   }
   const char* what() const NANODBC_NOEXCEPT { return message.c_str(); }
 
 private:
+  // #432: must be native encoded, as R expects native encoded chars for error msg
   std::string message;
 };
 
@@ -37,7 +48,6 @@ public:
   std::shared_ptr<nanodbc::statement> statement() const;
   std::shared_ptr<nanodbc::result> result() const;
   void prepare();
-  void execute();
   void describe_parameters(Rcpp::List const& x);
   void bind_list(Rcpp::List const& x, bool use_transaction, size_t batch_rows);
   Rcpp::DataFrame fetch(int n_max = -1);
@@ -62,6 +72,7 @@ private:
   int num_columns_;
   bool complete_;
   bool bound_;
+  bool immediate_;
   Iconv output_encoder_;
 
   std::map<short, std::vector<std::string>> strings_;
@@ -73,6 +84,11 @@ private:
 
   void clear_buffers();
   void unbind_if_needed();
+
+  // Private method - use only in constructor.
+  // It will allocate nanodbc resources ( statement, result )
+  // and call execute.
+  void execute();
 
   void bind_columns(
       nanodbc::statement& statement,

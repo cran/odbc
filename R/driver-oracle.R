@@ -20,6 +20,9 @@ setMethod("sqlCreateTable", "Oracle",
            temporary = FALSE,
            ...,
            field.types = NULL) {
+    check_bool(temporary)
+    check_row.names(row.names)
+    check_field.types(field.types)
     table <- dbQuoteIdentifier(con, table)
     fields <- createFields(con, fields, field.types, row.names)
 
@@ -124,21 +127,27 @@ setMethod("odbcConnectionColumns_", c("Oracle", "character"),
 )
 
 #' @export
-odbcDataType.Oracle <- function(con, obj, ...) {
-  switch_type(obj,
-    factor = "VARCHAR2(255)",
+#' @rdname odbcDataType
+#' @usage NULL
+setMethod("odbcDataType", "Oracle",
+  function(con, obj, ...) {
+    switch_type(
+      obj,
+      factor = "VARCHAR2(255)",
 
-    # No native oracle type for time
-    time = "VARCHAR2(255)",
-    date = "DATE",
-    datetime = "TIMESTAMP",
-    binary = "BLOB",
-    integer = "INTEGER",
-    int64 = "INTEGER",
-    double = "BINARY_DOUBLE",
-    character = "VARCHAR2(255)",
-    logical = "DECIMAL",
-    list = "VARCHAR2(255)",
-    stop("Unsupported type", call. = FALSE)
-  )
-}
+      # No native oracle type for time
+      time = "VARCHAR2(255)",
+      date = "DATE",
+      datetime = "TIMESTAMP",
+      binary = "BLOB",
+      integer = "INTEGER",
+      int64 = "INTEGER",
+      double = "BINARY_DOUBLE",
+      character = "VARCHAR2(255)",
+      logical = "DECIMAL",
+      list = "VARCHAR2(255)",
+      stop("Unsupported type", call. = FALSE)
+    )
+  }
+)
+

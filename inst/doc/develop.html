@@ -60,7 +60,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -350,6 +350,52 @@ odbc sets up small example database deployments.</p>
 <p>For the most part, this vignette assumes a MacOS system with aarch64
 (e.g. M1 or M2) architecture. For Linux example code, see <a href="https://github.com/r-dbi/odbc/blob/main/.github/workflows/db.yaml"><code>.github/workflows/db.yaml</code></a>,
 and for Windows, see <a href="https://github.com/r-dbi/odbc/blob/main/.github/workflows/db-windows.yml"><code>.github/workflows/db-windows.yml</code></a>.</p>
+<div id="posit-professional-drivers" class="section level2">
+<h2>Posit Professional Drivers</h2>
+<p>Posit employees have access to the <a href="https://docs.posit.co/pro-drivers/">Posit Professional drivers</a>
+and the infrastructure used to build and test them in the
+rstudio/pro-drivers GitHub repository. The Posit Professional drivers
+are a set of drivers vendored from Magnitude Simba that support many of
+the most popular DBMS, including SQL Server, Oracle, Redshift,
+Databricks, Snowflake, etc. The repository they’re developed in contains
+tooling to spin up a number of databases in docker containers to test
+against.</p>
+<p>Note that Athena, Hive, Impala, MongoDB, and Oracle drivers are <a href="https://github.com/oracle/python-cx_Oracle/issues/617">not
+available for macOS aarch64</a> (M1, M2, etc) at the time of
+writing.</p>
+<div id="drivers" class="section level3">
+<h3>Drivers</h3>
+<p>The only documented installation method for these drivers on MacOS is
+via RStudio Desktop Pro. The Posit confluence page titled “<span class="math display">\[INTERNAL\]</span> Posit License Files for
+Employee Use” contains instructions for installing RStudio Desktop Pro.
+Once RStudio Pro is installed, install individual drivers as documented
+<a href="https://docs.posit.co/ide/desktop-pro/database_drivers/install_database_drivers.html">here</a>.</p>
+</div>
+<div id="databases" class="section level3">
+<h3>Databases</h3>
+<p>Among other things, the rstudio/pro-drivers GitHub repository defines
+a <code>MAKE</code> tool for setting up and tearing down databases in
+docker containers. Ensure that you have a docker daemon running
+(i.e. Docker Desktop open) and, if you’re on macOS aarch64, have
+<code>Settings &gt; Use Rosetta for x86_64/amd64 emulation on Apple Silicon</code>
+enabled. To start a container for a given <code>dbms</code>, run
+<code>MAKE dist=none DB=dbms up</code>, and <strong>tear it
+down</strong> with <code>MAKE dist=none DB=db down</code>. To see
+available <code>dbms</code> options, see the names of <code>.yml</code>
+files in the <code>docker-compose</code> directory. Find connection
+details for each database in <code>docker/shared/odbc.ini</code>.</p>
+<p>DBMS-specific notes:</p>
+<ul>
+<li><code>sqlserver</code>: Be sure to pass <code>uid</code> and
+<code>pwd</code> as arguments to <code>dbConnect()</code> explicitly,
+even though they’re in the <code>odbc.ini</code> as well.</li>
+</ul>
+<p>On macOS aarch64, you will see a
+<code>requested image&#39;s platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)</code>
+warning when you start any of these containers. Feel free to ignore.
+:)</p>
+</div>
+</div>
 <div id="postgresql" class="section level2">
 <h2>PostgreSQL</h2>
 <p>On MacOS, install PostgreSQL with:</p>
@@ -558,6 +604,15 @@ argument:</p>
 <pre><code>con &lt;- dbConnect(odbc(), dsn = &quot;Snowflake&quot;, pwd = Sys.getenv(&quot;snowflakePass&quot;))</code></pre>
 <p>In the above, the password has been set as
 <code>Sys.setenv(snowflakePass = &quot;actualPass&quot;)</code>.</p>
+</div>
+<div id="amazon-redshift" class="section level2">
+<h2>Amazon Redshift</h2>
+<p>If you’re a Posit employee, you should have access to the
+rstudio/warehouse GitHub repository. Follow the instructions there to
+get access to the internal Redshift cluster. Access to the cluster is
+only enabled through Posit’s internal Workbench instance, where the
+professional drivers will already be installed.</p>
+<p>Note that Redshift is based on a modified version of PostgreSQL.</p>
 </div>
 <div id="rodbc" class="section level2">
 <h2>RODBC</h2>

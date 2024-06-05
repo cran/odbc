@@ -45,6 +45,7 @@ NULL
 #' }
 #' @export
 databricks <- function() {
+  configure_spark()
   new("DatabricksOdbcDriver")
 }
 
@@ -64,8 +65,15 @@ setMethod("dbConnect", "DatabricksOdbcDriver",
            uid = NULL,
            pwd = NULL,
            ...) {
+    call <- caller_env()
     # For backward compatibility with RStudio connection string
-    check_exclusive(httpPath, HTTPPath)
+    http_path <- check_exclusive(httpPath, HTTPPath, .call = call)
+    check_string(get(http_path), allow_null = TRUE, arg = http_path, call = call)
+    check_string(workspace, allow_null = TRUE, call = call)
+    check_bool(useNativeQuery, call = call)
+    check_string(driver, allow_null = TRUE, call = call)
+    check_string(uid, allow_null = TRUE, call = call)
+    check_string(pwd, allow_null = TRUE, call = call)
 
     args <- databricks_args(
       httpPath = if (missing(httpPath)) HTTPPath else httpPath,
@@ -101,7 +109,7 @@ databricks_args <- function(httpPath,
 
   arg_names <- tolower(names(all))
   if (!"authmech" %in% arg_names && !all(c("uid", "pwd") %in% arg_names)) {
-    warn(
+    abort(
       c(
         "x" = "Failed to detect ambient Databricks credentials.",
         "i" = "Supply `uid` and `pwd` to authenticate manually."
@@ -213,12 +221,12 @@ databricks_auth_args <- function(host, uid = NULL, pwd = NULL) {
   client_id <- Sys.getenv("DATABRICKS_CLIENT_ID")
   client_secret <- Sys.getenv("DATABRICKS_CLIENT_SECRET")
   cli_path <- Sys.getenv("DATABRICKS_CLI_PATH", "databricks")
+  cfg_file <- Sys.getenv("DATABRICKS_CONFIG_FILE")
 
   # Check for Workbench-provided credentials.
   wb_token <- NULL
-  if (exists(".rs.api.getDatabricksToken")) {
-    getDatabricksToken <- get(".rs.api.getDatabricksToken")
-    wb_token <- getDatabricksToken(host)
+  if (grepl("posit-workbench", cfg_file, fixed = TRUE)) {
+    wb_token <- workbench_databricks_token(host, cfg_file)
   }
 
   if (nchar(token) != 0) {
@@ -284,3 +292,26 @@ is_camel_case <- function(x) {
 }
 
 dot_names <- function(...) names(substitute(...()))
+
+# Reads Posit Workbench-managed Databricks credentials from a
+# $DATABRICKS_CONFIG_FILE. The generated file will look as follows:
+#
+# [workbench]
+# host = some-host
+# token = some-token
+workbench_databricks_token <- function(host, cfg_file) {
+  cfg <- readLines(cfg_file)
+  # We don't attempt a full parse of the INI syntax supported by Databricks
+  # config files, instead relying on the fact that this particular file will
+  # always contain only one section.
+  if (!any(grepl(host, cfg, fixed = TRUE))) {
+    # The configuration doesn't actually apply to this host.
+    return(NULL)
+  }
+  line <- grepl("token = ", cfg, fixed = TRUE)
+  token <- gsub("token = ", "", cfg[line])
+  if (nchar(token) == 0) {
+    return(NULL)
+  }
+  token
+}

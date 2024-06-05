@@ -1,11 +1,16 @@
 #include "odbc_result.h"
 #include "integer64.h"
 #include "time_zone.h"
+#include "utils.h"
 #include <chrono>
 #include <memory>
 
 namespace odbc {
 
+using odbc::utils::run_interruptible;
+using odbc::utils::raise_message;
+using odbc::utils::raise_warning;
+using odbc::utils::raise_error;
 odbc_result::odbc_result(
     std::shared_ptr<odbc_connection> c, std::string sql, bool immediate)
     : c_(c),
@@ -14,26 +19,25 @@ odbc_result::odbc_result(
       num_columns_(0),
       complete_(0),
       bound_(false),
+      immediate_(immediate),
       output_encoder_(Iconv(c_->encoding(), "UTF-8")) {
 
-  c_->cancel_current_result(false);
+  c_->cancel_current_result();
 
-  if (immediate) {
-    s_ = std::make_shared<nanodbc::statement>();
-    bound_ = true;
-    r_ = std::make_shared<nanodbc::result>(
-        s_->execute_direct(*c_->connection(), sql_));
-    num_columns_ = r_->columns();
-    c_->set_current_result(this);
+  if (c_->interruptible_execution_) {
+    auto exec_fn = std::mem_fn(&odbc_result::execute);
+    auto cleanup_fn = [this]() {
+      this->c_->set_current_result(nullptr);
+      this->s_->close();
+      this->s_.reset();
+    };
+    run_interruptible(std::bind(exec_fn, this), cleanup_fn);
   } else {
-    prepare();
-    c_->set_current_result(this);
-    if (s_->parameters() == 0) {
-      bound_ = true;
-      execute();
-    }
+    this->execute();
   }
+  return;
 }
+
 std::shared_ptr<odbc_connection> odbc_result::connection() const {
   return std::shared_ptr<odbc_connection>(c_);
 }
@@ -43,21 +47,34 @@ std::shared_ptr<nanodbc::statement> odbc_result::statement() const {
 std::shared_ptr<nanodbc::result> odbc_result::result() const {
   return std::shared_ptr<nanodbc::result>(r_);
 }
-void odbc_result::prepare() {
-  s_ = std::make_shared<nanodbc::statement>(*c_->connection(), sql_);
-}
+
 void odbc_result::execute() {
-  if (!r_) {
-    try {
-      r_ = std::make_shared<nanodbc::result>(s_->execute());
+  try {
+    c_->set_current_result(this);
+    s_ = std::make_shared<nanodbc::statement>();
+    if (!this->immediate_) s_->prepare(*c_->connection(), sql_);
+    if (this->immediate_ || (s_->parameters() == 0)) {
+      bound_ = true;
+      r_ = std::make_shared<nanodbc::result>(
+          this->immediate_ ? s_->execute_direct(*c_->connection(), sql_) :
+          s_->execute());
       num_columns_ = r_->columns();
-    } catch (const nanodbc::database_error& e) {
-      c_->set_current_result(nullptr);
-      throw odbc_error(e, sql_);
-    } catch (...) {
-      c_->set_current_result(nullptr);
-      throw;
     }
+  } catch (const nanodbc::database_error& e) {
+    c_->set_current_result(nullptr);
+    if (c_->interruptible_execution_) {
+      // Executing in a thread away from main.  Signal
+      // that we have encountered an error using an exception.
+      // Main thread will raise the formatted [R] error.
+      throw odbc_error(e, sql_, output_encoder_);
+    } else {
+      // Executing on the main thread.  Raise the
+      // formatted [R] errpr ourselves.
+      raise_error(odbc_error(e, sql_, output_encoder_));
+    }
+  } catch (...) {
+    c_->set_current_result(nullptr);
+    throw;
   }
 }
 
@@ -194,7 +211,7 @@ void odbc_result::unbind_if_needed() {
       }
     }
   } catch (const nanodbc::database_error& e) {
-    Rcpp::warning("Was unable to unbind some nanodbc buffers");
+    raise_warning("Was unable to unbind some nanodbc buffers");
   };
 }
 
@@ -462,7 +479,13 @@ std::vector<std::string> odbc_result::column_names(nanodbc::result const& r) {
   std::vector<std::string> names;
   names.reserve(num_columns_);
   for (short i = 0; i < num_columns_; ++i) {
-    names.push_back(r.column_name(i));
+    nanodbc::string_type name = r.column_name(i);
+    // We expect column names to share the same encoding as the
+    // data itself.  Similar to the handling of string fields,
+    // convert to UTF-8 before returning to user ( if needed )
+    names.push_back(
+        output_encoder_.makeString(name.c_str(), name.c_str() + name.length())
+    );
   }
   return names;
 }
@@ -831,11 +854,7 @@ void odbc_result::assign_string(
     if (value.is_null(column)) {
       res = NA_STRING;
     } else {
-      if (c_->encoding() != "") {
-        res = output_encoder_.makeSEXP(str.c_str(), str.c_str() + str.length());
-      } else { // If no encoding specified assume it is UTF-8 / ASCII
-        res = Rf_mkCharCE(str.c_str(), CE_UTF8);
-      }
+      res = output_encoder_.makeSEXP(str.c_str(), str.c_str() + str.length());
     }
   }
   SET_STRING_ELT(out[column], row, res);

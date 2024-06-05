@@ -14,6 +14,9 @@ setMethod("sqlCreateTable", "Teradata",
            temporary = FALSE,
            ...,
            field.types = NULL) {
+    check_bool(temporary)
+    check_row.names(row.names)
+    check_field.types(field.types)
     table <- dbQuoteIdentifier(con, table)
     fields <- createFields(con, fields, field.types, row.names)
 
@@ -68,19 +71,24 @@ setMethod("odbcConnectionTables", c("Teradata", "character"),
 
 
 #' @export
-`odbcDataType.Teradata` <- function(con, obj, ...) {
-  switch_type(obj,
-    factor = "VARCHAR(255)",
-    datetime = "TIMESTAMP",
-    date = "DATE",
-    time = "TIME",
-    binary = "BLOB",
-    integer = "INTEGER",
-    int64 = "INTEGER",
-    double = "FLOAT",
-    character = "VARCHAR(255)",
-    logical = "BYTEINT",
-    list = "VARCHAR(255)",
-    stop("Unsupported type", call. = FALSE)
-  )
-}
+#' @rdname odbcDataType
+#' @usage NULL
+setMethod("odbcDataType", "Teradata",
+  function(con, obj, ...) {
+    switch_type(
+      obj,
+      factor = "VARCHAR(255)",
+      datetime = "TIMESTAMP",
+      date = "DATE",
+      time = "TIME",
+      binary = "BLOB",
+      integer = "INTEGER",
+      int64 = "INTEGER",
+      double = "FLOAT",
+      character = "VARCHAR(255)",
+      logical = "BYTEINT",
+      list = "VARCHAR(255)",
+      stop("Unsupported type", call. = FALSE)
+    )
+  }
+)
