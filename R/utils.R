@@ -162,16 +162,17 @@ random_name <- function(prefix = "") {
 rethrow_database_error <- function(msg, call = trace_back()$call[[1]]) {
   tryCatch(
     res <- parse_database_error(msg),
-    error = function(e) cli::cli_abort(msg, call = call)
+    error = function(e) cli::cli_abort("{msg}", call = call)
   )
 
   cli::cli_abort(
     c(
       "!" = "ODBC failed with error {res$cnd_context_code} from \\
              {.field {paste0(res$cnd_context_driver, collapse = '')}}.",
-      set_names(res$cnd_body, nm = c("x", rep("*", length(res$cnd_body) - 1))),
+      set_database_error_names(res$cnd_body),
       "i" = "From {.file {res$cnd_context_nanodbc}}."
     ),
+    class = "odbc_database_error",
     call = call
   )
 }
@@ -198,12 +199,67 @@ parse_database_error <- function(msg) {
     right = TRUE
   )
 
+  cnd_body <- contextualize_database_error(cnd_body)
+
   list(
     cnd_context_nanodbc = cnd_context_nanodbc,
     cnd_context_code = cnd_context_code,
     cnd_context_driver = cnd_context_driver,
     cnd_body = cnd_body
   )
+}
+
+contextualize_database_error <- function(cnd_body) {
+  if (length(cnd_body) == 0 || !is_character(cnd_body)) {
+    return(cnd_body)
+  }
+
+  if (any(grepl("Data source name not found", cnd_body))) {
+    cnd_body <-
+      c(
+        cnd_body,
+        "i" = "See {.help odbc::odbcListDataSources} to learn more."
+      )
+  }
+
+  cnd_body
+}
+
+set_database_error_names <- function(cnd_body) {
+  # Respect names from `contextualize_database_error()`, otherwise ensure
+  # that the first is an "x" and the remainder are bulleted.
+  if (length(cnd_body) == 0) {
+    return(cnd_body)
+  }
+
+  cnd_body <- escape_curly_brackets(cnd_body)
+
+  if (is.null(names(cnd_body))) {
+    return(
+      set_names(cnd_body, nm = c("x", rep("*", length(cnd_body) - 1)))
+    )
+  }
+
+  set_names(
+    cnd_body,
+    c(
+      ifelse(names(cnd_body[1]) == "", "x", names(cnd_body[1])),
+      ifelse(names(cnd_body[-1]) == "", "*", names(cnd_body[-1]))
+    )
+  )
+}
+
+# Escape curly brackets before formatting with cli (#859). Do so only to
+# unnamed elements so that formatting is preserved for context
+# added with `contextualize_database_error()`.
+escape_curly_brackets <- function(cnd_body) {
+  if (is.null(names(cnd_body))) {
+    return(gsub("\\{", "{{", gsub("\\}", "}}", cnd_body)))
+  }
+
+  unnamed <- names(cnd_body) == ""
+  cnd_body[unnamed] <- gsub("\\{", "{{", gsub("\\}", "}}", cnd_body[unnamed]))
+  cnd_body
 }
 
 # check helpers for common odbc arguments --------------------------------------
@@ -247,103 +303,150 @@ check_attributes <- function(attributes, call = caller_env()) {
 }
 
 # apple + spark drive config (#651) --------------------------------------------
-configure_spark <- function(call = caller_env()) {
+# Method will attempt to:
+# 1. Locate an installation of unixodbc / error out otherwise.
+# 2. Verify the driver_config argument.  Expect this to be a list with
+#    two fields:
+#    * path Vector of viable driver paths ( only first one is used )
+#    * url A location where the user can downlaod the driver from.
+#    See spark_simba_config, for example.  Its return value is used as
+#    the value for this argument.
+# 3. Inspect the config for some settings that can impact how our package
+#    performs.
+# 4. If action == "modify" then we attempt to modify the config in-situ.
+# 5. Otherwise we throw a warning asking the user to revise.
+configure_simba <- function(driver_config,
+                            action = "modify", call = caller_env()) {
   if (!is_macos()) {
+    return(invisible())
+  }
+  if (!is.null(getOption("odbc.no_config_override"))) {
     return(invisible())
   }
 
   unixodbc_install <- locate_install_unixodbc()
   if (length(unixodbc_install) == 0) {
-    abort(
-      c(
-        "Unable to locate the unixODBC driver manager.",
-        i = "Please install unixODBC using Homebrew with `brew install unixodbc`."
-      ),
+    error_install_unixodbc(call)
+  }
+
+  simba_config <- driver_config$path
+  if (length(simba_config) == 0) {
+    func <- cli::cli_warn
+    if (action == "modify") {
+      fun <- cli::cli_abort
+    }
+    func(
+      c(i = "Please install the needed driver from {driver_config$url}"),
       call = call
     )
   }
-
-  spark_config <- locate_config_spark()
-  if (length(spark_config) == 0) {
-    abort(
-      c(
-        "Unable to locate the needed spark ODBC driver.",
-        i = "Please install the needed driver from https://www.databricks.com/spark/odbc-drivers-download."
-      ),
-      call = call
-    )
-  }
-
-  configure_unixodbc_spark(unixodbc_install[1], spark_config[1], call)
+  configure_unixodbc_simba(unixodbc_install[1], simba_config[1], action, call)
 }
 
 locate_install_unixodbc <- function() {
-  tryCatch(
-    {
-      unixodbc_prefix <- system("odbc_config --lib-prefix", intern = TRUE)
-      return(paste0(unixodbc_prefix, "/libodbcinst.dylib"))
-    },
-    error = function(e) {}
+  libodbcinst <- c(
+    system_safely("odbc_config --lib-prefix"),
+    system_safely("pkg-config --variable=libdir odbc")
   )
 
+  if (length(libodbcinst) > 0) {
+    return(libodbcinst[1])
+  }
+
   common_dirs <- c(
+    "/usr/lib",
+    "/usr/local",
+    "/lib",
     "/usr/local/lib",
+    "/usr/lib/x86_64-linux-gnu",
     "/opt/homebrew/lib",
+    "/opt/homebrew/etc",
     "/opt/homebrew/opt/unixodbc/lib"
   )
 
   list.files(
     common_dirs,
-    pattern = "libodbcinst\\.dylib$",
+    pattern = libodbcinst_filename(),
     full.names = TRUE
   )
 }
 
-# p. 44 https://downloads.datastax.com/odbc/2.6.5.1005/Simba%20Spark%20ODBC%20Install%20and%20Configuration%20Guide.pdf
-locate_config_spark <- function() {
-  spark_env <- Sys.getenv("SIMBASPARKINI")
-  if (!identical(spark_env, "")) {
-    return(spark_env)
+system_safely <- function(x) {
+  tryCatch(
+    {
+      unixodbc_prefix <- system(x, intern = TRUE, ignore.stderr = TRUE)
+      return(paste0(unixodbc_prefix, "/", libodbcinst_filename()))
+    },
+    error = function(e) {},
+    warning = function(w) {}
+  )
+  character()
+}
+
+libodbcinst_filename <- function() {
+  if (is_macos()) {
+    "libodbcinst.dylib"
+  } else {
+    "libodbcinst.so"
   }
+}
 
-  common_dirs <- c(
-    "/Library/simba/spark/lib",
-    "/etc",
-    getwd(),
-    Sys.getenv("HOME")
-  )
-
-  list.files(
-    common_dirs,
-    pattern = "simba\\.sparkodbc\\.ini$",
-    full.names = TRUE
+error_install_unixodbc <- function(call) {
+  abort(
+    c(
+      "Unable to locate the unixODBC driver manager.",
+      i = if (is_macos()) "Please install unixODBC using Homebrew with `brew install unixodbc`.",
+      i = if (!is_macos()) "Please install unixODBC and retry."
+    ),
+    call = call
   )
 }
 
-configure_unixodbc_spark <- function(unixodbc_install, spark_config, call) {
+configure_unixodbc_simba <- function(unixodbc_install, simba_config, action, call) {
+
   # As shipped, the simba spark ini has an incomplete final line
   suppressWarnings(
-    spark_lines <- readLines(spark_config)
+    simba_lines <- readLines(simba_config)
   )
-
-  spark_lines_new <- replace_or_append(
-    lines = spark_lines,
-    pattern = "^ODBCInstLib=",
+  res <- replace_or_append(
+    lines = simba_lines,
+    key_pattern = "^ODBCInstLib=",
+    accepted_value = unixodbc_install,
     replacement = paste0("ODBCInstLib=", unixodbc_install)
   )
-
-  spark_lines_new <- replace_or_append(
-    lines = spark_lines_new,
-    pattern = "^DriverManagerEncoding=",
+  warnings <- character()
+  if (action != "modify" && res$modified) {
+     warnings <- c(warnings, c("*" = "Please consider revising the {.arg ODBCInstLib}
+       field in {.file {simba_config}} and setting its value to {.val {unixodbc_install}}"))
+  }
+  simba_lines_new <- res$new_lines
+  res <- replace_or_append(
+    lines = simba_lines_new,
+    key_pattern = "^DriverManagerEncoding=",
+    accepted_value = "UTF-16|utf-16",
     replacement = "DriverManagerEncoding=UTF-16"
   )
+  if (action != "modify" && res$modified) {
+     warnings <- c(warnings, c("*" = "Please consider revising the
+       {.arg DriverManagerEncoding} field in {.file {simba_config}} and setting its
+       value to {.val UTF-16}."))
+  }
+  if (length(warnings)) {
+    cli::cli_warn(c(
+      c(i = "Detected potentially unsafe driver settings:"),
+      warnings
+    ))
+  }
+  simba_lines_new <- res$new_lines
 
-  write_spark_lines(spark_lines, spark_lines_new, spark_config, call)
+  if (action == "modify") {
+    write_simba_lines(simba_lines, simba_lines_new, simba_config, call)
+  }
 
   invisible()
 }
 
-write_spark_lines <- function(spark_lines, spark_lines_new, spark_config, call) {
+write_simba_lines <- function(spark_lines, spark_lines_new, spark_config, call) {
   if (identical(spark_lines, spark_lines_new)) {
     return(invisible())
   }
@@ -366,21 +469,84 @@ write_spark_lines <- function(spark_lines, spark_lines_new, spark_config, call) 
   writeLines(spark_lines_new, spark_config)
 }
 
+# Interpret the argument as an `ODBC` driver
+# and attempt to infer the directory housing it.
+# It will return an empty character vector if unable to.
+driver_dir <- function(driver) {
+  # driver argument could be an outright path, or a name
+  # of a driver specified in odbcinst.ini  Try to discern
+  driver_spec <- subset(odbcListDrivers(), name == driver)
+  if (nrow(driver_spec)) {
+    driver_path <- subset(driver_spec, attribute == "Driver")$value
+  } else {
+    driver_path <- driver
+  }
+
+  ret <- dirname(driver_path)
+  if (ret == ".") {
+    ret <- character()
+  }
+  return(ret)
+}
+
 is_writeable <- function(path) {
   tryCatch(file.access(path, mode = 2)[[1]] == 0, error = function(e) FALSE)
 }
 
-# given a vector of lines in an ini file, look for a given key pattern.
-# the `replacement` is the whole intended line, giving the "key=value" pair.
-# if the key is found, replace that line with `replacement`.
-# if the key isn't found, append a new line with `replacement`.
-replace_or_append <- function(lines, pattern, replacement) {
-  matching_lines_loc <- grepl(pattern, lines)
+# Given a vector of lines in an ini file, look for a given key pattern.
+# If found:
+# - No action if the `accepted_value` argument is found on line.
+# - Replace otherwise.
+# If not found: append.
+# The `replacement` is the whole intended line, giving the desired
+# "key=value" pair.
+# @return a list with two elements:
+# - new_lines: Potentially modified lines
+# - modified: Whether method modified lines, where modified means
+# both changed or appended.
+replace_or_append <- function(lines, key_pattern, accepted_value, replacement) {
+  matching_lines_loc <- grepl(key_pattern, lines)
   matching_lines <- lines[matching_lines_loc]
+  found_ok <- length(matching_lines) != 0 &&
+    any(grepl(accepted_value, lines[matching_lines_loc]))
   if (length(matching_lines) == 0) {
     lines <- c(lines, replacement)
-  } else {
+  } else if (!found_ok) {
     lines[matching_lines_loc] <- replacement
   }
-  lines
+  return(list(new_lines = lines, modified = !found_ok))
+}
+
+running_on_connect <- function() {
+  Sys.getenv("RSTUDIO_PRODUCT") == "CONNECT"
+}
+
+# Like Sys.getenv(), but checks passed keys in order and allows for non-string
+# defaults.
+getenv2 <- function(..., .unset = NULL) {
+  x <- as.character(list(...))
+  env <- Sys.getenv(x, NA_character_)
+  if (all(is.na(env))) {
+    return(.unset)
+  }
+  val <- env[!is.na(env)][1]
+  unname(val)
+}
+
+find_default_driver <- function(paths, fallbacks, label, call = caller_env()) {
+  paths <- paths[file.exists(paths)]
+  if (length(paths) > 0) {
+    return(paths[1])
+  }
+  fallbacks <- intersect(fallbacks, odbcListDrivers()$name)
+  if (length(fallbacks) > 0) {
+    return(fallbacks[1])
+  }
+  cli::cli_abort(
+    c(
+      "Failed to automatically find the {label} ODBC driver.",
+      i = "Set {.arg driver} to known driver name or path."
+    ),
+    call = call
+  )
 }

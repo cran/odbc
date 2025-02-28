@@ -48,6 +48,10 @@ setMethod("show", "OdbcDriver",
 #'   not using UTF-8 you will need to set the encoding to get accurate
 #'   re-encoding. See [iconvlist()] for a complete list of available encodings
 #'   on your system. Note strings are always returned `UTF-8` encoded.
+#' @param name_encoding The text encoding for column names used on the
+#'   Database.  May be different than the `encoding` argument.  Defaults to
+#'   empty string which is equivalent to returning the column names without
+#'   performing any conversion.
 #' @param driver The ODBC driver name or a path to a driver. For currently
 #'   available options, see the `name` column of [odbcListDrivers()] output.
 #' @param server The server hostname. Some drivers use `Servername` as the name
@@ -64,7 +68,7 @@ setMethod("show", "OdbcDriver",
 #'   the driver does not return a valid value, it can be set manually with this
 #'   parameter.
 #' @param attributes A list of connection attributes that are passed
-#'   prior to the connection being established. See \link{ConnectionAttributes}.
+#'   prior to the connection being established. See [ConnectionAttributes].
 #' @param interruptible Logical.  If `TRUE` calls to `SQLExecute` and
 #'   `SQLExecuteDirect` can be interrupted when the user sends SIGINT ( ctrl-c ).
 #'   Otherwise, they block.  Defaults to `TRUE` in interactive sessions, and
@@ -88,7 +92,7 @@ setMethod("show", "OdbcDriver",
 #'   Default is [bit64::integer64], which allows the full range of 64 bit
 #'   integers.
 #' @param timeout Time in seconds to timeout the connection attempt. Setting a
-#'   timeout of `Inf` indicates no timeout. Defaults to 10 seconds.
+#'   timeout of `Inf` or `NA` indicates no timeout. Defaults to 10 seconds.
 #'
 #' @section Connection strings:
 #'
@@ -130,15 +134,17 @@ setMethod("show", "OdbcDriver",
 #'
 #' Interfacing with DBMSs using R and odbc involves three high-level steps:
 #'
-#' 1) *Configure drivers and data sources*: the functions [odbcListDrivers()]
-#'   and [odbcListDataSources()] help to interface with the driver manager.
+#' 1) *Configure drivers and data sources*: the functions [odbcListDrivers()],
+#'   [odbcListDataSources()], and [odbcListConfig()] help to interface with the
+#'   driver manager.
 #' 2) *Connect to a database*: The [dbConnect()] function, called with the
 #'   first argument odbc(), connects to a database using the specified ODBC
 #'   driver to create a connection object.
 #' 3) *Interface with connections*: The resulting connection object can be
 #'   passed to various functions to retrieve information on database
-#'   structure ([dbListTables()]), iteratively develop queries ([dbSendQuery()],
-#'   [dbColumnInfo()]), and query data objects ([dbFetch()]).
+#'   structure ([DBI::dbListTables()][]), iteratively develop queries
+#'   ([DBI::dbSendQuery()], [DBI::dbColumnInfo()]), and query data objects
+#'   ([DBI::dbFetch()]).
 #'
 #' @aliases dbConnect odbc
 #'
@@ -163,6 +169,7 @@ setMethod("dbConnect", "OdbcDriver",
       timezone = "UTC",
       timezone_out = "UTC",
       encoding = "",
+      name_encoding = "",
       bigint = c("integer64", "integer", "numeric", "character"),
       timeout = 10,
       driver = NULL,
@@ -175,11 +182,12 @@ setMethod("dbConnect", "OdbcDriver",
       interruptible = getOption("odbc.interruptible", interactive()),
       .connection_string = NULL) {
     check_string(dsn, allow_null = TRUE)
-    check_string(timezone, allow_null = TRUE)
-    check_string(timezone_out, allow_null = TRUE)
-    check_string(encoding, allow_null = TRUE)
+    check_string(timezone)
+    check_string(timezone_out)
+    check_string(encoding)
+    check_string(name_encoding)
     arg_match(bigint)
-    check_number_decimal(timeout, allow_null = TRUE, allow_na = TRUE)
+    check_number_decimal(timeout, allow_na = TRUE)
     check_string(driver, allow_null = TRUE)
     check_string(server, allow_null = TRUE)
     check_string(database, allow_null = TRUE)
@@ -188,12 +196,17 @@ setMethod("dbConnect", "OdbcDriver",
     check_string(dbms.name, allow_null = TRUE)
     check_bool(interruptible)
 
+    if (!is_windows() && length(locate_install_unixodbc()) == 0) {
+      error_install_unixodbc(call = caller_env())
+    }
+
     con <- OdbcConnection(
       dsn = dsn,
       ...,
       timezone = timezone,
       timezone_out = timezone_out,
       encoding = encoding,
+      name_encoding = name_encoding,
       bigint = bigint,
       timeout = timeout,
       driver = driver,

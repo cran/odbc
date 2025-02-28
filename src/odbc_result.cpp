@@ -5,6 +5,9 @@
 #include <chrono>
 #include <memory>
 
+#ifndef SQL_SS_TIME2
+#define SQL_SS_TIME2 (-154)
+#endif
 namespace odbc {
 
 using odbc::utils::run_interruptible;
@@ -20,7 +23,8 @@ odbc_result::odbc_result(
       complete_(0),
       bound_(false),
       immediate_(immediate),
-      output_encoder_(Iconv(c_->encoding(), "UTF-8")) {
+      output_encoder_(c->output_encoder()),
+      column_name_encoder_(c->column_name_encoder()) {
 
   c_->cancel_current_result();
 
@@ -66,11 +70,11 @@ void odbc_result::execute() {
       // Executing in a thread away from main.  Signal
       // that we have encountered an error using an exception.
       // Main thread will raise the formatted [R] error.
-      throw odbc_error(e, sql_, output_encoder_);
+      throw odbc_error(e, sql_, *output_encoder_);
     } else {
       // Executing on the main thread.  Raise the
       // formatted [R] errpr ourselves.
-      raise_error(odbc_error(e, sql_, output_encoder_));
+      raise_error(odbc_error(e, sql_, *output_encoder_));
     }
   } catch (...) {
     c_->set_current_result(nullptr);
@@ -354,7 +358,7 @@ void odbc_result::bind_raw(
       column, raws_[column], reinterpret_cast<bool*>(nulls_[column].data()));
 }
 
-nanodbc::timestamp odbc_result::as_timestamp(double value) {
+nanodbc::timestamp odbc_result::as_timestamp(double value, unsigned long long factor, unsigned long long pad) {
   nanodbc::timestamp ts;
   auto frac = modf(value, &value);
 
@@ -362,9 +366,8 @@ nanodbc::timestamp odbc_result::as_timestamp(double value) {
   auto utc_time = system_clock::from_time_t(static_cast<std::time_t>(value));
 
   auto civil_time = cctz::convert(utc_time, c_->timezone());
-  // We are using a fixed precision of 3, as that is all we can be guaranteed
-  // to support in SQLServer
-  ts.fract = (std::int32_t)(frac * 1000) * 1000000;
+  ts.fract = (std::int32_t)(frac * factor) * pad;
+
   ts.sec = civil_time.second();
   ts.min = civil_time.minute();
   ts.hour = civil_time.hour();
@@ -407,12 +410,24 @@ void odbc_result::bind_datetime(
   auto d = REAL(data[column]);
 
   nanodbc::timestamp ts;
+  short precision = 3;
+  try {
+    precision = statement.parameter_scale(column);
+  } catch (const nanodbc::database_error& e) {
+    raise_warning("Unable to discern datetime precision. Using default (3).");
+  };
+  // Sanity scrub
+  precision = std::min<short>(precision, 7);
+  unsigned long long prec_adj = std::pow(10, precision);
+  // The fraction field is expressed in billionths of
+  // a second.
+  unsigned long long pad = std::pow(10, 9 - precision);
   for (size_t i = 0; i < size; ++i) {
     auto value = d[start + i];
     if (ISNA(value)) {
       nulls_[column][i] = true;
     } else {
-      ts = as_timestamp(value);
+      ts = as_timestamp(value, prec_adj, pad);
     }
     timestamps_[column].push_back(ts);
   }
@@ -480,11 +495,10 @@ std::vector<std::string> odbc_result::column_names(nanodbc::result const& r) {
   names.reserve(num_columns_);
   for (short i = 0; i < num_columns_; ++i) {
     nanodbc::string_type name = r.column_name(i);
-    // We expect column names to share the same encoding as the
-    // data itself.  Similar to the handling of string fields,
+    // Similar to the handling of string fields,
     // convert to UTF-8 before returning to user ( if needed )
     names.push_back(
-        output_encoder_.makeString(name.c_str(), name.c_str() + name.length())
+        column_name_encoder_->makeString(name.c_str(), name.c_str() + name.length())
     );
   }
   return names;
@@ -680,6 +694,7 @@ std::vector<r_type> odbc_result::column_types(nanodbc::result const& r) {
       break;
     // Time
     case SQL_TIME:
+    case SQL_SS_TIME2:
     case SQL_TYPE_TIME:
       types.push_back(odbc::time_t);
       break;
@@ -854,7 +869,7 @@ void odbc_result::assign_string(
     if (value.is_null(column)) {
       res = NA_STRING;
     } else {
-      res = output_encoder_.makeSEXP(str.c_str(), str.c_str() + str.length());
+      res = output_encoder_->makeSEXP(str.c_str(), str.c_str() + str.length());
     }
   }
   SET_STRING_ELT(out[column], row, res);

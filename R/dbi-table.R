@@ -3,8 +3,7 @@ NULL
 
 #' Convenience functions for reading/writing DBMS tables
 #'
-#' @param conn a \code{\linkS4class{OdbcConnection}} object, produced by
-#'   [DBI::dbConnect()]
+#' @param conn An [OdbcConnection] object, produced by [DBI::dbConnect()].
 #' @param name a character string specifying a table name. Names will be
 #'   automatically quoted so you can use any sequence of characters, not
 #'   just any valid bare table name.
@@ -157,7 +156,7 @@ setMethod("dbAppendTable", "OdbcConnection",
       )
       rs <- OdbcResult(conn, sql)
 
-      if (!is.null(fieldDetails) && nrow(fieldDetails) == nparam) {
+      if (!is.null(fieldDetails) && nrow(fieldDetails) <= nparam) {
         result_describe_parameters(rs@ptr, fieldDetails)
       }
 
@@ -180,7 +179,6 @@ setMethod("dbAppendTable", "OdbcConnection",
   })
 
 #' @rdname DBI-methods
-#' @inheritParams DBI::dbReadTable
 #' @export
 setMethod("sqlData", "OdbcConnection",
   function(con, value, row.names = NA, ...) {

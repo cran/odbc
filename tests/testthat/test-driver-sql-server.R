@@ -22,6 +22,8 @@ test_that("SQLServer", {
   DBItest::test_result(c(
     "get_query_n_zero_rows",
     "get_query_n_incomplete",
+    # TODO: fails with Pro Driver due to no "good" results returned
+    "fetch_n_good_after_bad",
     "fetch_no_return_value", # TODO
     "clear_result_return_statement",
     "cannot_clear_result_twice_statement",
@@ -52,7 +54,6 @@ test_that("SQLServer", {
     "quote_literal_na_is_null",
     "quote_literal_na_is_null",
     "create_table_error",
-    "create_temporary_table",
     "roundtrip_64_bit_roundtrip",
     "write_table_row_names_default",
     "list_fields_wrong_table",
@@ -230,6 +231,8 @@ test_that("odbcPreviewObject doesn't warn about pending rows", {
 
 test_that("dates should always be interpreted in the system time zone (#398)", {
   con <- test_con("SQLSERVER")
+  # TODO: resolve the issue requiring this skip
+  skip_if(grepl("RStudio", dbGetInfo(con)$drivername), "Pro Drivers fail this test.")
   res <- dbGetQuery(con, "SELECT CAST(? AS date)", params = as.Date("2019-01-01"))
   expect_equal(res[[1]], as.Date("2019-01-01"))
 })
@@ -323,4 +326,54 @@ test_that("can create / write to temp table", {
   notTempTblName <- "nottemp"
   expect_snapshot_warning(sqlCreateTable(con, notTempTblName, values, temporary = TRUE))
   expect_no_warning(sqlCreateTable(con, notTempTblName, values, temporary = FALSE))
+})
+
+test_that("independent encoding of column entries and names (#834)", {
+  skip_on_os("windows")
+  # PRO Driver does not present "AutoTranslate" option.
+  # Cursory investigation seems to indicate behavior is equivalent
+  # to AutoTranslate being set to "yes" ( character data is returned
+  # as UTF encoded, rather than in the code page corresponding to the
+  # collation ).
+  skip_if(Sys.getenv("ODBC_DRIVERS_VINTAGE") != "OEM")
+  rawVal1 <- as.raw(c(0x72, 0xc3, 0xa6, 0x76, 0x65, 0x6e))
+  rawVal2 <- as.raw(c(0xc3, 0xa5, 0x6c, 0x65, 0x6e, 0x73))
+  rawVal3 <- as.raw(c(0xc3, 0xb8, 0x72, 0x72, 0x65, 0x64))
+  rawCol <-  as.raw(c(0x62, 0xc3, 0xb8, 0x76, 0x73))
+  df <- data.frame(
+    var_char_col = c('kanin', rawToChar(rawVal1), rawToChar(rawVal2), rawToChar(rawVal3)),
+    col = 1
+  )
+  colnames(df)[2] <- rawToChar(rawCol)
+  conn <- test_con("SQLSERVER", encoding = "latin1", AutoTranslate = "no")
+  on.exit({
+    dbExecute(conn, "DROP TABLE deleteme_Danish_Norwegian_CI_AS.testschema.deleteme")
+    dbExecute(conn, "DROP SCHEMA IF EXISTS testschema")
+    dbExecute(conn, "USE tempdb")
+    dbExecute(conn, "DROP DATABASE IF EXISTS deleteme_Danish_Norwegian_CI_AS")
+  })
+  DBI::dbExecute(conn, "CREATE DATABASE deleteme_Danish_Norwegian_CI_AS COLLATE Danish_Norwegian_CI_AS")
+  DBI::dbExecute(conn, "USE deleteme_Danish_Norwegian_CI_AS")
+  DBI::dbExecute(conn, "CREATE SCHEMA testschema")
+  tbl_id <- DBI::Id(catalog = "deleteme_Danish_Norwegian_CI_AS", schema = "testschema", name = "deleteme")
+  DBI::dbWriteTable(conn, name = tbl_id, df, field.types = c('var_char_col' = 'varchar(5)'), overwrite = TRUE)
+  res <- DBI::dbReadTable(conn, tbl_id)
+  expect_identical(df, res)
+})
+
+test_that("DATETIME2 precision (#790)", {
+  con <- test_con("SQLSERVER")
+
+  seed <- as.POSIXlt("2025-01-25 18:45:39.395682")
+  val <- seed + runif(500, min = 0, max = 1)
+  df <- data.frame(dtm = val, dtm2 = val)
+
+  tbl <- local_table(con, "test_datetime2_precision", df,
+    field.types = list("dtm" = "DATETIME", "dtm2" = "DATETIME2(6)"))
+  res <- DBI::dbReadTable(con, tbl)
+  expect_equal(as.POSIXlt(df[[2]])$sec, as.POSIXlt(res[[2]])$sec, tolerance = 1E-7)
+})
+
+test_that("package:odbc roundtrip test", {
+  test_roundtrip(test_con("SQLSERVER"))
 })

@@ -321,6 +321,15 @@ struct timestamp
     std::int32_t fract; ///< Fractional seconds.
 };
 
+/// \brief A type trait for testing if a type is a std::basic_string compatible with the current
+/// nanodbc configuration
+template <typename T>
+using is_string = std::integral_constant<
+    bool,
+    std::is_same<typename std::decay<T>::type, std::string>::value ||
+        std::is_same<typename std::decay<T>::type, string_type>::value
+    >;
+
 /// \}
 
 /// \addtogroup mainc Main classes
@@ -687,6 +696,12 @@ public:
 
     /// \brief Returns parameter size for indicated parameter placeholder in a prepared statement.
     unsigned long parameter_size(short param_index) const;
+
+    /// \brief Returns parameter scale for indicated parameter placeholder in a prepared statement.
+    short parameter_scale(short param_index) const;
+
+    /// \brief Returns parameter type for indicated parameter placeholder in a prepared statement.
+    short parameter_type(short param_index) const;
 
     /// \addtogroup binding Binding parameters
     /// \brief These functions are used to bind values to ODBC parameters.

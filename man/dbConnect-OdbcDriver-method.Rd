@@ -15,6 +15,7 @@ odbc()
   timezone = "UTC",
   timezone_out = "UTC",
   encoding = "",
+  name_encoding = "",
   bigint = c("integer64", "integer", "numeric", "character"),
   timeout = 10,
   driver = NULL,
@@ -59,12 +60,17 @@ not using UTF-8 you will need to set the encoding to get accurate
 re-encoding. See \code{\link[=iconvlist]{iconvlist()}} for a complete list of available encodings
 on your system. Note strings are always returned \code{UTF-8} encoded.}
 
+\item{name_encoding}{The text encoding for column names used on the
+Database.  May be different than the \code{encoding} argument.  Defaults to
+empty string which is equivalent to returning the column names without
+performing any conversion.}
+
 \item{bigint}{The R type that \code{SQL_BIGINT} types should be mapped to.
 Default is \link[bit64:bit64-package]{bit64::integer64}, which allows the full range of 64 bit
 integers.}
 
 \item{timeout}{Time in seconds to timeout the connection attempt. Setting a
-timeout of \code{Inf} indicates no timeout. Defaults to 10 seconds.}
+timeout of \code{Inf} or \code{NA} indicates no timeout. Defaults to 10 seconds.}
 
 \item{driver}{The ODBC driver name or a path to a driver. For currently
 available options, see the \code{name} column of \code{\link[=odbcListDrivers]{odbcListDrivers()}} output.}
@@ -147,15 +153,17 @@ manager. The odbc package is built on top of the
 
 Interfacing with DBMSs using R and odbc involves three high-level steps:
 \enumerate{
-\item \emph{Configure drivers and data sources}: the functions \code{\link[=odbcListDrivers]{odbcListDrivers()}}
-and \code{\link[=odbcListDataSources]{odbcListDataSources()}} help to interface with the driver manager.
+\item \emph{Configure drivers and data sources}: the functions \code{\link[=odbcListDrivers]{odbcListDrivers()}},
+\code{\link[=odbcListDataSources]{odbcListDataSources()}}, and \code{\link[=odbcListConfig]{odbcListConfig()}} help to interface with the
+driver manager.
 \item \emph{Connect to a database}: The \code{\link[=dbConnect]{dbConnect()}} function, called with the
 first argument odbc(), connects to a database using the specified ODBC
 driver to create a connection object.
 \item \emph{Interface with connections}: The resulting connection object can be
 passed to various functions to retrieve information on database
-structure (\code{\link[=dbListTables]{dbListTables()}}), iteratively develop queries (\code{\link[=dbSendQuery]{dbSendQuery()}},
-\code{\link[=dbColumnInfo]{dbColumnInfo()}}), and query data objects (\code{\link[=dbFetch]{dbFetch()}}).
+structure ([DBI::dbListTables()][]), iteratively develop queries
+(\code{\link[DBI:dbSendQuery]{DBI::dbSendQuery()}}, \code{\link[DBI:dbColumnInfo]{DBI::dbColumnInfo()}}), and query data objects
+(\code{\link[DBI:dbFetch]{DBI::dbFetch()}}).
 }
 }
 
