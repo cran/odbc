@@ -1,3 +1,8 @@
+# odbc 1.6.1
+
+* odbc will now automatically find statically built installations of
+  unixodbc (#899).
+
 # odbc 1.6.0
 
 ## New features
