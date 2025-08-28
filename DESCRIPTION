@@ -1,10 +1,11 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.6.1
+Version: 1.6.2
 Authors@R: c(
     person("Jim", "Hester", role = "aut"),
     person("Hadley", "Wickham", , "hadley@posit.co", role = c("aut", "cre")),
     person("Oliver", "Gjoneski", role = "aut"),
+    person("Simon", "Couch", email = "simon.couch@posit.co", role = "aut"),
     person("lexicalunit", role = "cph",
            comment = "nanodbc library"),
     person("Google Inc.", role = "cph",
@@ -45,13 +46,14 @@ Collate: 'RcppExports.R' 'aaa-odbc-data-type.R' 'connection-pane.R'
         'odbc.R' 'utils.R' 'zzz.R'
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2025-03-26 20:22:27 UTC; hadleywickham
+Packaged: 2025-08-28 21:51:18 UTC; simoncouch
 Author: Jim Hester [aut],
   Hadley Wickham [aut, cre],
   Oliver Gjoneski [aut],
+  Simon Couch [aut],
   lexicalunit [cph] (nanodbc library),
   Google Inc. [cph] (cctz library),
   Posit Software, PBC [cph, fnd]
 Maintainer: Hadley Wickham <hadley@posit.co>
 Repository: CRAN
-Date/Publication: 2025-03-27 12:10:02 UTC
+Date/Publication: 2025-08-28 23:40:02 UTC

@@ -376,6 +376,92 @@ test_that("DATETIME2 precision (#790)", {
   expect_equal(as.POSIXlt(df[[2]])$sec, as.POSIXlt(res[[2]])$sec, tolerance = 1E-7)
 })
 
+test_that("DATETIMEOFFSET", {
+  con <- test_con("SQLSERVER")
+
+  df <- data.frame(tz_char = rep("2025-05-10 19:35:03.123 +02:00", 3), tz = rep("2025-05-10 19:35:03.123 +02:00", 3))
+
+  tbl <- local_table(con, "test_datetimeoffset", df,
+    field.types = list("tz_char" = "VARCHAR(50)", "tz" = "DATETIMEOFFSET"), overwrite = TRUE)
+  res <- DBI::dbReadTable(con, tbl)
+  expect_s3_class(res[[2]], "POSIXct")
+  expect_equal(as.double(res[[2]][1] - as.POSIXct(res[[1]][1]), units = "hours"), 2, tolerance = 1E-4)
+})
+
 test_that("package:odbc roundtrip test", {
   test_roundtrip(test_con("SQLSERVER"))
+})
+
+test_that("Mixed success multiple result-sets (#924)", {
+  con <- test_con("SQLSERVER")
+
+  df <- data.frame(ID = LETTERS[1:10])
+
+  tbl <- local_table(con, "test_mixed_success_param_retrieval", df)
+  res <- DBI::dbGetQuery(
+      con,
+      "SELECT * FROM test_mixed_success_param_retrieval WHERE ID = ?",
+      params = list(c("A", "B", "C"))
+  )
+  expect_equal(nrow(res), 3)
+  res <- DBI::dbGetQuery(
+      con,
+      "SELECT * FROM test_mixed_success_param_retrieval WHERE ID = ?",
+      params = list(c("Z", "A", "B", "C"))
+  )
+  expect_equal(nrow(res), 3)
+  res <- DBI::dbGetQuery(
+      con,
+      "SELECT * FROM test_mixed_success_param_retrieval WHERE ID = ?",
+      params = list(c("A", "Z", "B", "C"))
+  )
+  expect_equal(nrow(res), 3)
+  res <- DBI::dbGetQuery(
+      con,
+      "SELECT * FROM test_mixed_success_param_retrieval WHERE ID = ?",
+      params = list(c("A", "B", "C", "Z"))
+  )
+  expect_equal(nrow(res), 3)
+})
+
+test_that("Table-valued parameters", {
+  con <- test_con("SQLSERVER")
+  dbExecute(con, "CREATE TYPE tvp_param AS TABLE (col0 INT, col1 BIGINT, col2 VARCHAR(MAX), col3 VARCHAR(MAX), col4 VARCHAR(MAX));")
+  # tvp is second argument to sproc
+  dbExecute(con, "CREATE PROCEDURE tvp_test(@p0 INT, @p1 tvp_param READONLY, @p2 NVARCHAR(MAX)) AS
+                  BEGIN
+                    SET NOCOUNT ON;
+                    SELECT @p0 as p0, col0, col1, col2, col3, col4, @p2 as p2
+                    FROM @p1
+                    ORDER BY col0;
+                    RETURN 0;
+                  END")
+  # a second sproc that takes the tvp as the first argument
+  dbExecute(con, "CREATE PROCEDURE tvp_test2(@p0 tvp_param READONLY, @p1 INT, @p2 NVARCHAR(MAX)) AS
+                  BEGIN
+                    SET NOCOUNT ON;
+                    SELECT @p1 as p0, col0, col1, col2, col3, col4, @p2 as p2
+                    FROM @p0
+                    ORDER BY col0;
+                    RETURN 0;
+                  END")
+  on.exit({
+    dbExecute(con, "DROP PROCEDURE tvp_test")
+    dbExecute(con, "DROP PROCEDURE tvp_test2")
+    dbExecute(con, "DROP TYPE tvp_param")
+  })
+
+  df.param <- data.frame(int = 1:10, bigint = 1:10, vrchr = rownames(mtcars)[1:10],
+    vrchr2 = as.character(iris$Species[1:10]), vrchr3 = LETTERS[1:10], stringsAsFactors = FALSE)
+  res <- dbGetQuery(con, "{ CALL tvp_test(?, ?, ?) }", params = list(100, df.param, "Lorem ipsum dolor sit amet"))
+
+  expected <- cbind(data.frame("p0" = as.integer(100)), df.param,
+    data.frame("p2" = "Lorem ipsum dolor sit amet", stringsAsFactors = FALSE))
+  colnames(expected) <- c("p0", "col0", "col1", "col2", "col3", "col4", "p2")
+  expected$col1 <- bit64::as.integer64(expected$col1)
+  expect_identical(res, expected)
+
+  res <- dbGetQuery(con, "{ CALL tvp_test2(?, ?, ?) }",
+    params = list(df.param, 100, "Lorem ipsum dolor sit amet"))
+  expect_identical(res, expected)
 })

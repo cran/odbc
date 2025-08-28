@@ -198,6 +198,15 @@ parse_database_error <- function(msg) {
     cnd_msg[-1],
     right = TRUE
   )
+  # Limit error message length to something sane (#914)
+  max_len <- 5000
+  cnd_body <- sapply(cnd_body, FUN = function(x) {
+    if (nchar(x) > max_len) {
+      x <- substr(x, 0, max_len)
+      x <- paste0(x, "...")
+    }
+    x
+  }, USE.NAMES = FALSE)
 
   cnd_body <- contextualize_database_error(cnd_body)
 
@@ -340,7 +349,7 @@ configure_simba <- function(driver_config,
       call = call
     )
   }
-  configure_unixodbc_simba(unixodbc_install[1], simba_config[1], action, call)
+  configure_unixodbc_simba(unixodbc_install, simba_config[1], action, call)
 }
 
 locate_install_unixodbc <- function() {
@@ -366,23 +375,14 @@ locate_install_unixodbc <- function() {
     "/opt/R/x86_64/lib"
   )
 
-  list.files(
-    common_dirs,
-    pattern = libodbcinst_filename(),
-    full.names = TRUE
-  )
+  return(libodbcinst_file(common_dirs))
 }
 
 system_safely <- function(x) {
   tryCatch(
     {
       unixodbc_prefix <- system(x, intern = TRUE, ignore.stderr = TRUE)
-      candidates <- list.files(unixodbc_prefix,
-        pattern = libodbcinst_filename(), full.names = TRUE)
-      if (!length(candidates)) {
-        stop("Unable to locate unixodbc using odbc_config")
-      }
-      return(candidates[1])
+      return(libodbcinst_file(unixodbc_prefix))
     },
     error = function(e) {},
     warning = function(w) {}
@@ -390,14 +390,24 @@ system_safely <- function(x) {
   character()
 }
 
-# Returns a pattern to be used with
-# list.files( ..., pattern = ... ).
-libodbcinst_filename <- function() {
-  if (is_macos()) {
-    "libodbcinst.dylib|libodbcinst.a"
-  } else {
-    "libodbcinst.so|libodbcinst.a"
+# Search for an instance of the unixodbc lib in
+# the directories passed in the `dirs` argument.
+# Preference is given to shared libraries.
+libodbcinst_file <- function(dirs) {
+  if (is_windows()) {
+    return(character())
   }
+  # Order matters, we prefer shlib (#919)
+  file_names <- ifelse(is_macos(), "libodbcinst.dylib", "libodbcinst.so")
+  file_names <- c(file_names, "libodbcinst.a")
+  for (file_name in file_names) {
+    candidates <- list.files(dirs,
+      pattern = file_name, full.names = TRUE)
+    if (length(candidates)) {
+      return(candidates[1])
+    }
+  }
+  return(character())
 }
 
 error_install_unixodbc <- function(call) {

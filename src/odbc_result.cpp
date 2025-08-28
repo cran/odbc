@@ -5,8 +5,18 @@
 #include <chrono>
 #include <memory>
 
+#if R_VERSION < R_Version(4, 5, 0)
+#define Rf_isDataFrame(x) Rf_isFrame(x)
+#endif
+
 #ifndef SQL_SS_TIME2
 #define SQL_SS_TIME2 (-154)
+#endif
+#ifndef SQL_DB2_XML
+#define SQL_DB2_XML (-370)
+#endif
+#ifndef SQL_SS_TIMESTAMPOFFSET
+#define SQL_SS_TIMESTAMPOFFSET (-155)
 #endif
 namespace odbc {
 
@@ -82,39 +92,44 @@ void odbc_result::execute() {
   }
 }
 
+template<typename T>
 void odbc_result::bind_columns(
-    nanodbc::statement& statement,
+    T& obj,
     r_type type,
     Rcpp::List const& data,
     short column,
     size_t start,
-    size_t size) {
+    size_t size,
+    param_data& buffers) {
 
   switch (type) {
   case logical_t:
-    bind_logical(*s_, data, column, start, size);
+    bind_logical(obj, data, column, start, size, buffers);
     break;
   case date_t:
-    bind_date(*s_, data, column, start, size);
+    bind_date(obj, data, column, start, size, buffers);
     break;
   case datetime_t:
-    bind_datetime(*s_, data, column, start, size);
+    bind_datetime(obj, data, column, start, size, buffers);
     break;
   case double_t:
-    bind_double(*s_, data, column, start, size);
+    bind_double(obj, data, column, start, size, buffers);
     break;
   case integer_t:
-    bind_integer(*s_, data, column, start, size);
+    bind_integer(obj, data, column, start, size, buffers);
     break;
   case odbc::time_t:
-    bind_time(*s_, data, column, start, size);
+    bind_time(obj, data, column, start, size, buffers);
     break;
   case ustring_t:
   case string_t:
-    bind_string(*s_, data, column, start, size);
+    bind_string(obj, data, column, start, size, buffers);
     break;
   case raw_t:
-    bind_raw(*s_, data, column, start, size);
+    bind_raw(obj, data, column, start, size, buffers);
+    break;
+  case dataframe_t:
+    bind_df(obj, data, column, start, size, buffers);
     break;
   default:
     Rcpp::stop("Not yet implemented (%s)!", type);
@@ -158,7 +173,7 @@ void odbc_result::bind_list(
     Rcpp::stop(
         "Query requires '%i' params; '%i' supplied.", s_->parameters(), ncols);
   }
-  size_t nrows = Rf_length(x[0]);
+  size_t nrows = get_parameter_rows(x);
   size_t start = 0;
   std::unique_ptr<nanodbc::transaction> t;
   if (use_transaction && c_->supports_transactions()) {
@@ -172,7 +187,7 @@ void odbc_result::bind_list(
     clear_buffers();
 
     for (short col = 0; col < ncols; ++col) {
-      bind_columns(*s_, types[col], x, col, start, size);
+      bind_columns(*s_, types[col], x, col, start, size, buffers_);
     }
     r_ = std::make_shared<nanodbc::result>(nanodbc::execute(*s_, size));
     num_columns_ = r_->columns();
@@ -246,116 +261,300 @@ odbc_result::~odbc_result() {
 }
 
 void odbc_result::clear_buffers() {
-  strings_.clear();
-  raws_.clear();
-  times_.clear();
-  timestamps_.clear();
-  dates_.clear();
-  nulls_.clear();
+  buffers_.strings_.clear();
+  buffers_.raws_.clear();
+  buffers_.times_.clear();
+  buffers_.timestamps_.clear();
+  buffers_.dates_.clear();
+  buffers_.nulls_.clear();
+  tvp_buffers_.clear();
 }
 
+template<typename T>
 void odbc_result::bind_logical(
-    nanodbc::statement& statement,
+    T& obj,
     Rcpp::List const& data,
     short column,
     size_t start,
-    size_t size) {
-  nulls_[column] = std::vector<uint8_t>(size, false);
+    size_t size,
+    param_data& buffers) {
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
   auto vector = LOGICAL(data[column]);
   for (size_t i = 0; i < size; ++i) {
     if (vector[start + i] == NA_LOGICAL) {
-      nulls_[column][i] = true;
+      buffers.nulls_[column][i] = true;
     }
   }
   auto t = reinterpret_cast<const int*>(&LOGICAL(data[column])[start]);
-  statement.bind<int>(
-      column, t, size, reinterpret_cast<bool*>(nulls_[column].data()));
+  obj.template bind<int>(
+      column, t, size, reinterpret_cast<bool*>(buffers.nulls_[column].data()));
 }
 
+template<typename T>
 void odbc_result::bind_integer(
-    nanodbc::statement& statement,
+    T& obj,
     Rcpp::List const& data,
     short column,
     size_t start,
-    size_t size) {
-  nulls_[column] = std::vector<uint8_t>(size, false);
+    size_t size,
+    param_data& buffers) {
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
 
   auto vector = INTEGER(data[column]);
   for (size_t i = 0; i < size; ++i) {
     if (vector[start + i] == NA_INTEGER) {
-      nulls_[column][i] = true;
+      buffers.nulls_[column][i] = true;
     }
   }
-  statement.bind(
+  obj.bind(
       column,
       &INTEGER(data[column])[start],
       size,
-      reinterpret_cast<bool*>(nulls_[column].data()));
+      reinterpret_cast<bool*>(buffers.nulls_[column].data()));
 }
 
 // We cannot use a sentinel for doubles becuase NaN != NaN for all values
 // of NaN, even if the bits are the same.
+template<typename T>
 void odbc_result::bind_double(
-    nanodbc::statement& statement,
+    T& obj,
     Rcpp::List const& data,
     short column,
     size_t start,
-    size_t size) {
-  nulls_[column] = std::vector<uint8_t>(size, false);
+    size_t size,
+    param_data& buffers) {
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
 
   auto vector = REAL(data[column]);
   for (size_t i = 0; i < size; ++i) {
     if (ISNA(vector[start + i])) {
-      nulls_[column][i] = true;
+      buffers.nulls_[column][i] = true;
     }
   }
 
-  statement.bind(
+  obj.bind(
       column,
       &vector[start],
       size,
-      reinterpret_cast<bool*>(nulls_[column].data()));
+      reinterpret_cast<bool*>(buffers.nulls_[column].data()));
 }
 
+template<typename T>
 void odbc_result::bind_string(
-    nanodbc::statement& statement,
+    T& obj,
     Rcpp::List const& data,
     short column,
     size_t start,
-    size_t size) {
-  nulls_[column] = std::vector<uint8_t>(size, false);
+    size_t size,
+    param_data& buffers) {
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
   for (size_t i = 0; i < size; ++i) {
     auto value = STRING_ELT(data[column], start + i);
     if (value == NA_STRING) {
-      nulls_[column][i] = true;
+      buffers.nulls_[column][i] = true;
     }
     const char* v = CHAR(value);
-    strings_[column].push_back(v);
+    buffers.strings_[column].push_back(v);
   }
 
-  statement.bind_strings(
-      column, strings_[column], reinterpret_cast<bool*>(nulls_[column].data()));
+  obj.bind_strings(
+      column, buffers.strings_[column], reinterpret_cast<bool*>(buffers.nulls_[column].data()));
 }
+
+template<typename T>
 void odbc_result::bind_raw(
-    nanodbc::statement& statement,
+    T& obj,
     Rcpp::List const& data,
     short column,
     size_t start,
-    size_t size) {
-  nulls_[column] = std::vector<uint8_t>(size, false);
+    size_t size,
+    param_data& buffers) {
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
   for (size_t i = 0; i < size; ++i) {
     SEXP value = VECTOR_ELT(data[column], start + i);
     if (TYPEOF(value) == NILSXP) {
-      nulls_[column][i] = true;
-      raws_[column].push_back(std::vector<uint8_t>());
+      buffers.nulls_[column][i] = true;
+      buffers.raws_[column].push_back(std::vector<uint8_t>());
     } else {
-      raws_[column].push_back(
+      buffers.raws_[column].push_back(
           std::vector<uint8_t>(RAW(value), RAW(value) + Rf_length(value)));
     }
   }
 
-  statement.bind(
-      column, raws_[column], reinterpret_cast<bool*>(nulls_[column].data()));
+  obj.bind(
+      column, buffers.raws_[column], reinterpret_cast<bool*>(buffers.nulls_[column].data()));
+}
+
+template<typename T>
+void odbc_result::bind_datetime(
+    T& obj,
+    Rcpp::List const& data,
+    short column,
+    size_t start,
+    size_t size,
+    param_data& buffers) {
+
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
+  auto d = REAL(data[column]);
+
+  nanodbc::timestamp ts;
+  short precision = 3;
+  try {
+    precision = obj.parameter_scale(column);
+  } catch (const nanodbc::database_error& e) {
+    raise_warning("Unable to discern datetime precision. Using default (3).");
+  };
+  // Sanity scrub
+  precision = std::min<short>(precision, 7);
+  unsigned long long prec_adj = std::pow(10, precision);
+  // The fraction field is expressed in billionths of
+  // a second.
+  unsigned long long pad = std::pow(10, 9 - precision);
+  for (size_t i = 0; i < size; ++i) {
+    auto value = d[start + i];
+    if (ISNA(value)) {
+      buffers.nulls_[column][i] = true;
+    } else {
+      ts = as_timestamp(value, prec_adj, pad);
+    }
+    buffers.timestamps_[column].push_back(ts);
+  }
+  obj.bind(
+      column,
+      buffers.timestamps_[column].data(),
+      size,
+      reinterpret_cast<bool*>(buffers.nulls_[column].data()));
+}
+
+template<typename T>
+void odbc_result::bind_date(
+    T& obj,
+    Rcpp::List const& data,
+    short column,
+    size_t start,
+    size_t size,
+    param_data& buffers) {
+
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
+  auto d = REAL(data[column]);
+
+  nanodbc::date dt;
+  for (size_t i = 0; i < size; ++i) {
+    auto value = d[start + i] * seconds_in_day_;
+    if (ISNA(value)) {
+      buffers.nulls_[column][i] = true;
+    } else {
+      dt = as_date(value);
+    }
+    buffers.dates_[column].push_back(dt);
+  }
+  obj.bind(
+      column,
+      buffers.dates_[column].data(),
+      size,
+      reinterpret_cast<bool*>(buffers.nulls_[column].data()));
+}
+
+template<typename T>
+void odbc_result::bind_time(
+    T& obj,
+    Rcpp::List const& data,
+    short column,
+    size_t start,
+    size_t size,
+    param_data& buffers) {
+
+  buffers.nulls_[column] = std::vector<uint8_t>(size, false);
+  auto d = REAL(data[column]);
+
+  nanodbc::time ts;
+  for (size_t i = 0; i < size; ++i) {
+    auto value = d[start + i];
+    if (ISNA(value)) {
+      buffers.nulls_[column][i] = true;
+    } else {
+      ts = as_time(value);
+    }
+    buffers.times_[column].push_back(ts);
+  }
+  obj.bind(
+      column,
+      buffers.times_[column].data(),
+      size,
+      reinterpret_cast<bool*>(buffers.nulls_[column].data()));
+}
+
+template<typename T>
+void odbc_result::bind_df(
+    T& obj,
+    Rcpp::List const& data,
+    short column,
+    size_t start, /* ignored */
+    size_t size,  /* ignored */
+    param_data& buffers) {
+
+  const Rcpp::List& df = data[column];
+  auto types = column_types(df);
+  auto ncols = df.size();
+  size_t nrows = Rf_length(df[0]);
+  auto param = nanodbc::table_valued_parameter(*s_, column, nrows);
+
+  for (short col = 0; col < ncols; ++col) {
+    bind_columns(param, types[col], df, col, 0, nrows, tvp_buffers_[column]);
+  }
+  param.close();
+
+  return;
+}
+
+std::vector<std::string> odbc_result::column_names(nanodbc::result const& r) {
+  std::vector<std::string> names;
+  names.reserve(num_columns_);
+  for (short i = 0; i < num_columns_; ++i) {
+    nanodbc::string_type name = r.column_name(i);
+    // Similar to the handling of string fields,
+    // convert to UTF-8 before returning to user ( if needed )
+    names.push_back(
+        column_name_encoder_->makeString(name.c_str(), name.c_str() + name.length())
+    );
+  }
+  return names;
+}
+
+double odbc_result::as_double(nanodbc::timestampoffset const& tso) {
+  using namespace cctz;
+  if (tso.offset_hour == 0 && tso.offset_minute == 0) {
+    return as_double(tso.stamp);
+  }
+  const sys_seconds offset(tso.offset_hour * 3600 + tso.offset_minute * 60);
+
+  // Make sure we can load timezone
+  // Capture any error that we can raise
+  // to [R] more gracefully.
+  //
+  // Note, when the TZ file can't be located on the FS,
+  // `fixed_time_zone` will return false (and fallback to utc).
+  // As we want to throw this warning ONCE, and not on *every*
+  // failed row value, we test to see whether `cctz` has thrown
+  // an error.  There, an error is thrown only *once* for each
+  // (failed) time-zone.
+  std::stringstream stream;
+  std::streambuf* oldClogStreamBuf = std::clog.rdbuf(stream.rdbuf());
+  cctz::time_zone tz = fixed_time_zone(offset);
+  std::clog.rdbuf(oldClogStreamBuf);
+  if (stream.rdbuf()->in_avail()) {
+    std::stringstream msg;
+    msg << "Unable to locate TZ corresponding to offset of " << offset.count() << " seconds.\n";
+    msg << "Falling back to the `timezone` connection argument if specified, or `UTC` if not.";
+    raise_warning(msg.str());
+    return as_double(tso.stamp);
+  }
+
+  // sec is time_point
+  auto sec = convert(
+      civil_second(tso.stamp.year, tso.stamp.month, tso.stamp.day, tso.stamp.hour, tso.stamp.min, tso.stamp.sec),
+      tz);
+  return sec.time_since_epoch().count() + (tso.stamp.fract / 1000000000.0);
 }
 
 nanodbc::timestamp odbc_result::as_timestamp(double value, unsigned long long factor, unsigned long long pad) {
@@ -399,111 +598,6 @@ nanodbc::time odbc_result::as_time(double value) {
   return ts;
 }
 
-void odbc_result::bind_datetime(
-    nanodbc::statement& statement,
-    Rcpp::List const& data,
-    short column,
-    size_t start,
-    size_t size) {
-
-  nulls_[column] = std::vector<uint8_t>(size, false);
-  auto d = REAL(data[column]);
-
-  nanodbc::timestamp ts;
-  short precision = 3;
-  try {
-    precision = statement.parameter_scale(column);
-  } catch (const nanodbc::database_error& e) {
-    raise_warning("Unable to discern datetime precision. Using default (3).");
-  };
-  // Sanity scrub
-  precision = std::min<short>(precision, 7);
-  unsigned long long prec_adj = std::pow(10, precision);
-  // The fraction field is expressed in billionths of
-  // a second.
-  unsigned long long pad = std::pow(10, 9 - precision);
-  for (size_t i = 0; i < size; ++i) {
-    auto value = d[start + i];
-    if (ISNA(value)) {
-      nulls_[column][i] = true;
-    } else {
-      ts = as_timestamp(value, prec_adj, pad);
-    }
-    timestamps_[column].push_back(ts);
-  }
-  statement.bind(
-      column,
-      timestamps_[column].data(),
-      size,
-      reinterpret_cast<bool*>(nulls_[column].data()));
-}
-void odbc_result::bind_date(
-    nanodbc::statement& statement,
-    Rcpp::List const& data,
-    short column,
-    size_t start,
-    size_t size) {
-
-  nulls_[column] = std::vector<uint8_t>(size, false);
-  auto d = REAL(data[column]);
-
-  nanodbc::date dt;
-  for (size_t i = 0; i < size; ++i) {
-    auto value = d[start + i] * seconds_in_day_;
-    if (ISNA(value)) {
-      nulls_[column][i] = true;
-    } else {
-      dt = as_date(value);
-    }
-    dates_[column].push_back(dt);
-  }
-  statement.bind(
-      column,
-      dates_[column].data(),
-      size,
-      reinterpret_cast<bool*>(nulls_[column].data()));
-}
-
-void odbc_result::bind_time(
-    nanodbc::statement& statement,
-    Rcpp::List const& data,
-    short column,
-    size_t start,
-    size_t size) {
-
-  nulls_[column] = std::vector<uint8_t>(size, false);
-  auto d = REAL(data[column]);
-
-  nanodbc::time ts;
-  for (size_t i = 0; i < size; ++i) {
-    auto value = d[start + i];
-    if (ISNA(value)) {
-      nulls_[column][i] = true;
-    } else {
-      ts = as_time(value);
-    }
-    times_[column].push_back(ts);
-  }
-  statement.bind(
-      column,
-      times_[column].data(),
-      size,
-      reinterpret_cast<bool*>(nulls_[column].data()));
-}
-std::vector<std::string> odbc_result::column_names(nanodbc::result const& r) {
-  std::vector<std::string> names;
-  names.reserve(num_columns_);
-  for (short i = 0; i < num_columns_; ++i) {
-    nanodbc::string_type name = r.column_name(i);
-    // Similar to the handling of string fields,
-    // convert to UTF-8 before returning to user ( if needed )
-    names.push_back(
-        column_name_encoder_->makeString(name.c_str(), name.c_str() + name.length())
-    );
-  }
-  return names;
-}
-
 double odbc_result::as_double(nanodbc::timestamp const& ts) {
   using namespace cctz;
   auto sec = convert(
@@ -544,6 +638,7 @@ Rcpp::List odbc_result::create_dataframe(
       out[j] = Rf_allocVector(STRSXP, n);
       break;
     case raw_t:
+    case dataframe_t:
       out[j] = Rf_allocVector(VECSXP, n);
       break;
     case logical_t:
@@ -605,6 +700,10 @@ std::vector<r_type> odbc_result::column_types(Rcpp::List const& list) {
   std::vector<r_type> types;
   types.reserve(list.size());
   for (short i = 0; i < list.size(); ++i) {
+    if (Rf_isDataFrame(list[i])) {
+      types.push_back(dataframe_t);
+      continue;
+    }
     switch (TYPEOF(list[i])) {
     case LGLSXP:
       types.push_back(logical_t);
@@ -700,6 +799,7 @@ std::vector<r_type> odbc_result::column_types(nanodbc::result const& r) {
       break;
     case SQL_TIMESTAMP:
     case SQL_TYPE_TIMESTAMP:
+    case SQL_SS_TIMESTAMPOFFSET:
       types.push_back(datetime_t);
       break;
     case SQL_CHAR:
@@ -715,6 +815,7 @@ std::vector<r_type> odbc_result::column_types(nanodbc::result const& r) {
     case SQL_BINARY:
     case SQL_VARBINARY:
     case SQL_LONGVARBINARY:
+    case SQL_DB2_XML:
       types.push_back(raw_t);
       break;
     default:
@@ -724,6 +825,22 @@ std::vector<r_type> odbc_result::column_types(nanodbc::result const& r) {
     }
   }
   return types;
+}
+
+bool odbc_result::nextResultSet(nanodbc::result& r) {
+  while (r.next_result()) {
+    // MYSQL, when returning from a CALL [proc]
+    // returns a final result set containing a
+    // status flag.  Protect against trying to
+    // process/fetch this result set by checking
+    // the number of columns.  This is
+    // consistent with
+    // https://dev.mysql.com/doc/c-api/8.0/en/c-api-prepared-call-statements.html
+    if (r.columns() && r.next()) {
+      return true;
+    }
+  };
+  return false;
 }
 
 Rcpp::List odbc_result::result_to_dataframe(nanodbc::result& r, int n_max) {
@@ -736,7 +853,7 @@ Rcpp::List odbc_result::result_to_dataframe(nanodbc::result& r, int n_max) {
   int row = 0;
 
   if (rows_fetched_ == 0 && n > 0) {
-    complete_ = !r.next();
+    complete_ = !r.next() && !nextResultSet(r);
   }
 
   while (!complete_) {
@@ -792,22 +909,7 @@ Rcpp::List odbc_result::result_to_dataframe(nanodbc::result& r, int n_max) {
     if (rows_fetched_ % 16384 == 0) {
       Rcpp::checkUserInterrupt();
     }
-
-    if (complete_) {
-      while (r.next_result()) {
-        // MYSQL, when returning from a CALL [proc]
-        // returns a final result set containing a
-        // status flag.  Protect against trying to
-        // process/fetch this result set by checking
-        // the number of columns.  This is
-        // consistent with
-        // https://dev.mysql.com/doc/c-api/8.0/en/c-api-prepared-call-statements.html
-        if (r.columns() && r.next()) {
-          complete_ = false;
-          break;
-        }
-      };
-    }
+    complete_ = complete_ && !nextResultSet(r);
   } // while ( !complete_ )
 
   // Resize if needed
@@ -901,7 +1003,7 @@ void odbc_result::assign_datetime(
   if (value.is_null(column)) {
     res = NA_REAL;
   } else {
-    auto ts = value.get<nanodbc::timestamp>(column);
+    auto ts = value.get<nanodbc::timestampoffset>(column);
     if (value.is_null(column)) {
       res = NA_REAL;
     } else {
@@ -964,4 +1066,50 @@ void odbc_result::assign_raw(
   std::copy(data.begin(), data.end(), RAW(bytes));
   SET_VECTOR_ELT(out[column], row, bytes);
 }
+
+// Infer number of rows across parameters.
+//
+// In keeping with how we have done this historically,
+// use the length of the first non-data.frame parameter.
+//
+// In the future we should attempt to do some validation.  For example
+// * Are all parameters of same length
+// * If there is a TVP, are there other parameters of length > 1
+size_t odbc_result::get_parameter_rows(Rcpp::List const& x) {
+  auto ncols = x.size();
+  size_t nrows = 0;
+  for (short col = 0; col < ncols; ++col) {
+    if (Rf_isDataFrame(x[col])) {
+      nrows = 1;
+      continue;
+    }
+    nrows = Rf_length(x[col]);
+    break;
+  }
+  return nrows;
+}
+
+# define R_ODBC_INSTANTIATE_BINDS(type)                                   \
+  template void odbc_result::bind_columns(type& obj, r_type,              \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_logical(type& obj,                      \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_integer(type& obj,                      \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_double(type& obj,                       \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_string(type& obj,                       \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_raw(type& obj,                          \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_datetime(type& obj,                     \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_date(type& obj,                         \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_time(type& obj,                         \
+      Rcpp::List const&, short, size_t, size_t, param_data&);             \
+  template void odbc_result::bind_df(type& obj,                           \
+      Rcpp::List const&, short, size_t, size_t, param_data&);
+R_ODBC_INSTANTIATE_BINDS(nanodbc::statement);
+R_ODBC_INSTANTIATE_BINDS(nanodbc::table_valued_parameter);
 } // namespace odbc

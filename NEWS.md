@@ -1,3 +1,25 @@
+# odbc 1.6.2
+
+* Fix hang when parsing exceptionally long database errors (#916).
+* Fix retrieving multiple result sets from parametrized queries in cases when some parameters yield empty results (#927).
+
+* Databricks and Snowflake:
+     - The package will prefer shlib to locate statically built installations of unixodbc, correcting an issue with erroneously overwritten lines in `simba.sparkodbc.ini` (#921).
+     - `dbConnect()` no longer errors on repeated calls (#901).
+
+* DB2:
+     - `DB2_XML` support added (#913).
+     - Fix error when writing to temp tables (#910).
+
+* Snowflake:
+     - `sf_private_key` and `sf_private_key_password` connection attributes added to pass PEM formatted private key contents directly from memory (#933).
+     - Corrected search paths for `.ini` files, so the package is now more likely to find configuration files by default (#937).
+
+* SQL Server:
+     - Fix issues with argument propagation in bespoke S4 methods (#906).
+     - `DATETIMEOFFSET` data type support added (#918).
+     - `data.frames` can now bind to table valued parameters of stored procedures (#928).
+
 # odbc 1.6.1
 
 * odbc will now automatically find statically built installations of

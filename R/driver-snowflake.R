@@ -216,7 +216,7 @@ snowflake_args <- function(account = Sys.getenv("SNOWFLAKE_ACCOUNT"),
     if (nchar(Sys.getenv("SF_PARTNER")) != 0 ){
       all$application <- Sys.getenv("SF_PARTNER")
     } else {
-      all$application <- paste0("r-odbc/", packageVersion("odbc"))
+      all$application <- "r-odbc"
     }
   }
 
@@ -273,8 +273,9 @@ snowflake_default_driver_paths <- function() {
 
 snowflake_simba_config <- function(driver) {
   snowflake_env <- Sys.getenv("SIMBASNOWFLAKEINI")
+  URL <- "https://docs.snowflake.com/en/developer-guide/odbc/odbc-download"
   if (!identical(snowflake_env, "")) {
-    return(snowflake_env)
+    return(list(path = snowflake_env, url = URL))
   }
   # Posit configuration is likely at:
   # /opt/snowflake-osx-x64/bin/lib/rstudio.snowflakeodbc.ini
@@ -289,10 +290,10 @@ snowflake_simba_config <- function(driver) {
   )
   return(list(
     path = list.files(
-      simba_config_dirs(driver),
+      common_dirs,
       pattern = "snowflake(odbc)?\\.ini$",
       full.names = TRUE),
-    url = "https://docs.snowflake.com/en/developer-guide/odbc/odbc-download"
+    url = URL
   ))
 }
 
