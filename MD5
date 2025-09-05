@@ -1,7 +1,7 @@
-3621fe1071ca9ba2ab22feede62c7d98 *DESCRIPTION
+3d4de9ef57d66a25b6f61675d406c322 *DESCRIPTION
 4e3a072c8d1beb8ad76914791957caa9 *LICENSE
 054380a7eba5b72f40674ca10ccdf75b *NAMESPACE
-f7c6b439004434c60a2b46935ad1f531 *NEWS.md
+ecb990ce07a69b66fab9043851dc5879 *NEWS.md
 b2fcd629ef90d10b3d5d00d1bbdacea0 *R/RcppExports.R
 0efda261d82d5c7d381e0f41a1e59ef6 *R/aaa-odbc-data-type.R
 1f68faa901f219d36e194bc202f37e2d *R/connection-pane.R
@@ -140,7 +140,7 @@ a86267191caf2f98bddcd325497a9cbf *src/cctz/src/time_zone_posix.h
 44a208af4ca2e1a7f19e7092c2927693 *src/condition.h
 38469f34370360e2915f6314076a6d4c *src/connection.cpp
 d1f4bb85217a1e21bb594090e4380162 *src/integer64.h
-1e96468bcd34967699d5d9c890cdc656 *src/nanodbc/nanodbc.cpp
+ac04506702cf8c79e765a6784c05362d *src/nanodbc/nanodbc.cpp
 5ebb2b6add6e804455ed48d6fca10505 *src/nanodbc/nanodbc.h
 1a64db25d591ed796250222117a93c11 *src/odbc_connection.cpp
 43c8f8b873fe831562a3059f43616806 *src/odbc_connection.h
