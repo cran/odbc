@@ -1,6 +1,6 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.6.4
+Version: 1.6.4.1
 Authors@R: c(
     person("Jim", "Hester", role = "aut"),
     person("Hadley", "Wickham", , "hadley@posit.co", role = c("aut", "cre")),
@@ -46,7 +46,7 @@ Collate: 'RcppExports.R' 'aaa-odbc-data-type.R' 'connection-pane.R'
         'odbc.R' 'utils.R' 'zzz.R'
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2025-12-05 21:31:18 UTC; simoncouch
+Packaged: 2025-12-20 17:02:58 UTC; ripley
 Author: Jim Hester [aut],
   Hadley Wickham [aut, cre],
   Oliver Gjoneski [aut],
@@ -56,4 +56,4 @@ Author: Jim Hester [aut],
   Posit Software, PBC [cph, fnd]
 Maintainer: Hadley Wickham <hadley@posit.co>
 Repository: CRAN
-Date/Publication: 2025-12-06 16:00:01 UTC
+Date/Publication: 2025-12-24 07:56:07 UTC

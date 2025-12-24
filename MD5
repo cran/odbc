@@ -1,4 +1,4 @@
-bdc049cd6bd8bec80b7126306a85cd4c *DESCRIPTION
+9b3034ec1bf6a4b4436d2a294eddb123 *DESCRIPTION
 4e3a072c8d1beb8ad76914791957caa9 *LICENSE
 054380a7eba5b72f40674ca10ccdf75b *NAMESPACE
 05300518edd10b1d0c99df7fc419597f *NEWS.md
@@ -42,7 +42,7 @@ c40f882046a958444c6058a9e2cb9a3b *R/import-standalone-types-check.R
 57aeea4e5164c456187c77ff89bbf24a *README.md
 051d8bb88ce8527bd4ebe3e0cf2d5749 *build/vignette.rds
 12d1848ebfc60eaa57a94ea963b90462 *cleanup
-0d34b02d1a7e45287399a574113b6d81 *configure
+8cf845a173667a6f2646a43c1cc823ee *configure
 d41d8cd98f00b204e9800998ecf8427e *configure.win
 b2cd2dc1e317ffdc68fd30b1796fa2b1 *inst/COPYING
 be8fba7f0f89ad543431daa6f04a3d0c *inst/doc/benchmarks.R
