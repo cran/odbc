@@ -379,13 +379,26 @@ test_that("DATETIME2 precision (#790)", {
 test_that("DATETIMEOFFSET", {
   con <- test_con("SQLSERVER")
 
+  # Test writing strings to a `DATETIMEOFFSET` target and reading it back as
+  # POSIXct with properly recorded offset.
   df <- data.frame(tz_char = rep("2025-05-10 19:35:03.123 -02:00", 3), tz = rep("2025-05-10 19:35:03.123 -02:00", 3))
 
-  tbl <- local_table(con, "test_datetimeoffset", df,
+  tbl_name <- "test_datetimeoffset"
+  tbl <- local_table(con, tbl_name, df,
     field.types = list("tz_char" = "VARCHAR(50)", "tz" = "DATETIMEOFFSET"), overwrite = TRUE)
   res <- DBI::dbReadTable(con, tbl)
   expect_s3_class(res[[2]], "POSIXct")
   expect_equal(as.double(res[[2]][1] - as.POSIXct(res[[1]][1]), units = "hours"), 2, tolerance = 1E-4)
+
+  # Test writing POSIXct to a `DATETIMEOFFSET` target
+  tbl_name <- "test_datetimeoffset2"
+  df <- data.frame(tz = c(as.POSIXct("2022-04-01 12:00:00", tz = "Europe/Stockholm"), as.POSIXct("2022-04-01 13:00:00", tz = "Europe/Stockholm")))
+  tbl <- local_table(con, tbl_name, df,
+    field.types = list("tz" = "DATETIMEOFFSET"), overwrite = TRUE)
+  # This result comes back as POSIXct in the timezone of the connection --- UTC in this case
+  # However difftime can handle subtracting POSIXct with different timezones.
+  res <- DBI::dbReadTable(con, tbl)
+  expect_true(all(df$tz - res$tz == 0))
 })
 
 test_that("package:odbc roundtrip test", {
@@ -425,6 +438,11 @@ test_that("Mixed success multiple result-sets (#924)", {
 })
 
 test_that("Table-valued parameters", {
+  # PRO Driver does not, at this time, handle TVPs.
+  # In particular, `SQLDescribeParam`
+  # applied to the TVP param does *not* return
+  # SQL_SS_TABLE
+  skip_if(Sys.getenv("ODBC_DRIVERS_VINTAGE") != "OEM")
   con <- test_con("SQLSERVER")
   dbExecute(con, "CREATE TYPE tvp_param AS TABLE (col0 INT, col1 BIGINT, col2 VARCHAR(MAX), col3 VARCHAR(MAX), col4 VARCHAR(MAX));")
   # tvp is second argument to sproc
@@ -489,4 +507,30 @@ test_that("Variable date type storage", {
   DBI::dbWriteTable(con, tbl_name, data_real, overwrite = TRUE)
   res <- dbReadTable(con, tbl_name)
   expect_identical(data_real, res)
+})
+
+test_that("Recycling in dbBind works (#491)", {
+  dat_in <- data.frame(id = 1000:1004, timestamp = sprintf("2022-04-01 12:00:%02d -04:00", 1:5))
+  dat_expect <- subset(dat_in, id %in% 1003:1004) |>
+    transform(timestamp = as.POSIXct(timestamp, tz = "America/New_York"))
+  rownames(dat_expect) <- NULL
+
+  con <- test_con("SQLSERVER")
+  tbl_name <- local_table(con, "recyclingtemptable", dat_in,
+                          field.types = c(id = "int", timestamp = "DATETIMEOFFSET"))
+
+  res <- dbSendStatement(con, paste("select * from ", tbl_name, " where id = ? and timestamp > ? order by id"))
+  expect_silent( dbBind(res, list(1003:1004, "2022-04-01 12:00:02.000000 +00:00")) )
+  expect_silent( ret <- dbFetch(res) )
+  dbClearResult(res)
+  attr(ret$timestamp, "tzone") <- attr(dat_expect$timestamp, "tzone")
+  expect_equal(ret, dat_expect)
+
+  res <- dbSendStatement(con, paste("select * from ", tbl_name, " where id = ? and timestamp > ? order by id"))
+  expect_error(
+    # different lengths: 3 and 2
+    dbBind(res, list(1003:1005, rep("2022-04-01 12:00:02.000000 +00:00", 2))),
+    "Can't recycle .*"
+  )
+  dbClearResult(res)
 })

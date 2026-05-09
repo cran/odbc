@@ -1,6 +1,6 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.6.4.1
+Version: 1.7.0
 Authors@R: c(
     person("Jim", "Hester", role = "aut"),
     person("Hadley", "Wickham", , "hadley@posit.co", role = c("aut", "cre")),
@@ -19,10 +19,10 @@ URL: https://odbc.r-dbi.org, https://github.com/r-dbi/odbc,
 BugReports: https://github.com/r-dbi/odbc/issues
 Depends: R (>= 4.0.0)
 Imports: bit64, blob (>= 1.2.0), cli, DBI (>= 1.0.0), hms, lifecycle,
-        methods, Rcpp (>= 0.12.11), rlang (>= 1.1.0)
-Suggests: connectcreds, covr, DBItest, httr2, knitr, magrittr,
-        paws.common, rmarkdown, RSQLite, testthat (>= 3.0.0), tibble,
-        withr
+        methods, Rcpp (>= 0.12.11), rlang (>= 1.1.0), vctrs
+Suggests: connectcreds (>= 0.2.0), covr, DBItest, httr2, knitr,
+        magrittr, paws.common, rmarkdown, RSQLite, snowflakeauth,
+        testthat (>= 3.0.0), tibble, withr
 LinkingTo: Rcpp
 ByteCompile: true
 Config/Needs/check: pkgbuild
@@ -46,7 +46,7 @@ Collate: 'RcppExports.R' 'aaa-odbc-data-type.R' 'connection-pane.R'
         'odbc.R' 'utils.R' 'zzz.R'
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2025-12-20 17:02:58 UTC; ripley
+Packaged: 2026-05-05 18:45:03 UTC; simoncouch
 Author: Jim Hester [aut],
   Hadley Wickham [aut, cre],
   Oliver Gjoneski [aut],
@@ -56,4 +56,4 @@ Author: Jim Hester [aut],
   Posit Software, PBC [cph, fnd]
 Maintainer: Hadley Wickham <hadley@posit.co>
 Repository: CRAN
-Date/Publication: 2025-12-24 07:56:07 UTC
+Date/Publication: 2026-05-09 15:00:02 UTC

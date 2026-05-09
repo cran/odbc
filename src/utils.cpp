@@ -60,7 +60,7 @@ namespace utils {
       {
         std::shared_ptr<std::string> priv_key =
           std::make_shared<std::string>(Rcpp::as<std::string>(r_attributes["sf_private_key"]));
-        std::shared_ptr< void > buffer(malloc(priv_key->size()), std::free);
+        std::shared_ptr< void > buffer(malloc(priv_key->size() + 1), std::free);
         // Copy null terminator as well
         std::memcpy(buffer.get(), priv_key->c_str(), priv_key->size() + 1);
         attributes.push_back(nanodbc::connection::attribute(
@@ -72,7 +72,7 @@ namespace utils {
       {
         std::shared_ptr<std::string> key_pass =
           std::make_shared<std::string>(Rcpp::as<std::string>(r_attributes["sf_private_key_password"]));
-        std::shared_ptr< void > buffer(malloc(key_pass->size()), std::free);
+        std::shared_ptr< void > buffer(malloc(key_pass->size() + 1), std::free);
         // Copy null terminator as well
         std::memcpy(buffer.get(), key_pass->c_str(), key_pass->size() + 1);
         attributes.push_back(nanodbc::connection::attribute(
@@ -82,7 +82,8 @@ namespace utils {
     }
   }
 
-  void run_interruptible(const std::function<void()>& exec_fn, const std::function<void()>& cleanup_fn)
+  void run_interruptible(const std::function<void()>& exec_fn, const std::function<void()>& cancel_fn,
+                         const std::function<void()>& cleanup_fn)
   {
     std::exception_ptr eptr;
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -114,13 +115,13 @@ namespace utils {
         try { Rcpp::checkUserInterrupt(); }
         catch (const Rcpp::internal::InterruptedException& e) {
           raise_message("Caught user interrupt, attempting a clean exit...");
-          cleanup_fn();
+          cancel_fn();
         } catch (...) { throw; }
       }
     } while (status != std::future_status::ready);
     if (eptr) {
       // An exception was thrown in the thread
-      try { std::rethrow_exception(eptr); }
+      try { cleanup_fn(); std::rethrow_exception(eptr); }
       catch (const odbc_error& e) { raise_error(e); }
       catch (...) { raise_message("Unknown exception while executing"); throw; };
     }

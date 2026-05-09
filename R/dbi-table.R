@@ -136,7 +136,7 @@ setMethod("dbAppendTable", "OdbcConnection",
     }
 
     fieldDetails <- tryCatch({
-      details <- odbcConnectionColumns_(conn, name, exact = TRUE)
+      details <- odbcConnectionColumns(conn, name, exact = TRUE)
       details$param_index <- match(details$name, colnames(value))
       details[!is.na(details$param_index) & !is.na(details$data_type), ]
     },
@@ -191,10 +191,6 @@ setMethod("sqlData", "OdbcConnection",
     # Convert POSIXlt to POSIXct
     is_POSIXlt <- vapply(value, function(x) is.object(x) && (is(x, "POSIXlt")), logical(1))
     value[is_POSIXlt] <- lapply(value[is_POSIXlt], as.POSIXct)
-
-    # Convert data.table::IDate to Date
-    is_IDate <- vapply(value, function(x) is.object(x) && (is(x, "IDate")), logical(1))
-    value[is_IDate] <- lapply(value[is_IDate], as.Date)
 
     # C code takes care of atomic vectors, dates, date times, and blobs just need to coerce other objects
     is_object <- vapply(value, function(x) is.object(x) && !(is(x, "POSIXct") || is(x, "Date") || is_blob(x) || is(x, "difftime")), logical(1))
@@ -308,7 +304,7 @@ setMethod("dbListFields", c("OdbcConnection", "character"),
     check_string(schema_name, allow_null = TRUE)
     check_string(column_name, allow_null = TRUE)
 
-    cols <- odbcConnectionColumns_(
+    cols <- odbcConnectionColumns(
       conn,
       name = name,
       catalog_name = catalog_name,

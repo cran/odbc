@@ -1,3 +1,55 @@
+# odbc 1.7.0
+
+## Databricks
+
+* `databricks()` now supports workload identity federation
+  (#1002).
+
+* `databricks()` now detects service principal credentials
+  when running on Posit Connect (@tnederlof, #931).
+
+* `databricks()` now has improved performance when the
+  `useNativeQuery` connection attribute is set to `true`
+  (#998).
+
+* `databricks()` driver location discovery now handles the
+  new OEM driver for macOS (#994).
+
+## Snowflake
+
+* `odbc::snowflake()` now uses the `snowflakeauth` package to
+  resolve connection parameters from Snowflake `connections.toml`
+  and `config.toml` files under the hood, which improves support
+  for non-OAuth authenticators (including "externalbrowser"
+  authentication), adds support for the `host` field, allows
+  multiple named connections (via the new `connection_name`
+  argument), and generally improves compatibility with the
+  Snowflake CLI and Python ecosystem (#1000).
+
+* `sf_private_key` is now robust to newline character ending
+  (#997).
+
+## Miscellaneous
+
+* SQL Server: `POSIXct` data can now be written to
+  `DATETIMEOFFSET` targets (#985).
+
+* `odbcConnectionColumns()`, `odbcConnectionIcon()`, and
+  `odbcConnectionActions()` are now fully deprecated. Use
+  `DBI::dbListFields()` instead of `odbcConnectionColumns()`
+  (#986).
+
+* Fix crash when interrupting execution using Ctrl-c (#977).
+
+* Fix R error/crash when the `params` arguments are different
+  lengths and one is `POSIXt` (#984). This forces all
+  bound-parameters to be length 1 or the same length (i.e.,
+  tidyverse recycling rules).
+
+* `databricks()` and `snowflake()` now correctly error (instead
+  of warning) when the driver configuration file is not found
+  (#1001).
+
 # odbc 1.6.4
 
 * Fix writing of [R] date/time values that have integer storage. (#952)

@@ -1,18 +1,4 @@
 
-# build_connection_string -------------------------------------------------
-
-test_that("handles simple inputs", {
-  expect_equal(build_connection_string(), "")
-  expect_equal(build_connection_string(list(foo = "1")), "foo=1")
-  expect_equal(build_connection_string(list(foo = "1", bar = "2")), "foo=1;bar=2")
-})
-
-test_that("combines with existing .connection string", {
-  expect_equal(build_connection_string(string = "x=1"), "x=1")
-  expect_equal(build_connection_string(list(foo = "1"), "x=1"), "x=1;foo=1")
-  expect_equal(build_connection_string(list(foo = "1"), "x=1;"), "x=1;foo=1")
-})
-
 test_that("errors if unnamed arguments", {
   expect_snapshot(check_args(list(1, 2, 3)), error = TRUE)
 })
@@ -78,23 +64,4 @@ test_that("validateObjectName() errors informatively", {
     error = TRUE,
     odbcListColumns(con)
   )
-})
-
-# odbcConnectionColumns deprecation --------------------------------------
-
-test_that("odbcConnectionColumns warns on usage (#699)", {
-  skip_if_no_unixodbc()
-  con <- test_con("SQLITE")
-  lifecycle::expect_deprecated(odbcConnectionColumns(con, "test"))
-})
-
-test_that("odbcConnectionColumns_ is eventually removed (#699)", {
-  skip_on_cran()
-  if (Sys.Date() > "2026-01-01") {
-    testthat::expect(
-      FALSE,
-      c("Time to unexport deprecated `odbcConnection*()` functions and rename",
-        "`odbcConnection*_()` to `odbcConnection*()`! See #699.")
-    )
-  }
 })
