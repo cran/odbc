@@ -9,12 +9,29 @@ test_connection_string <- function(db) {
   list(.connection_string = cs)
 }
 
+# Tracks which backends have already had their dbGetInfo() logged, so we
+# emit it only once per backend per test run.
+.logged_dbinfo <- new.env(parent = emptyenv())
+
 test_con <- function(db, ...) {
-  dbConnect(
+  con <- dbConnect(
     odbc::odbc(),
     .connection_string = test_connection_string(db),
     ...
   )
+  # In CI (GitHub Actions sets CI=true), log driver/DBMS info once per backend
+  # to help diagnose driver-specific behavior. Routed through message() so it
+  # lands on stderr and shows in the CI log regardless of testthat's output
+  # capture. Kept quiet locally.
+  if (nzchar(Sys.getenv("CI")) && is.null(.logged_dbinfo[[db]])) {
+    info <- paste(
+      utils::capture.output(utils::str(DBI::dbGetInfo(con))),
+      collapse = "\n"
+    )
+    message("==== dbGetInfo(", db, ") ====\n", info)
+    .logged_dbinfo[[db]] <- TRUE
+  }
+  con
 }
 
 local_table <- function(con, name, df, ..., envir = parent.frame()) {
@@ -65,7 +82,12 @@ skip_if_no_unixodbc <- function() {
 #' # Only test a specific column
 #' test_roundtrip(con, "integer", invert = FALSE)
 #' }
-test_roundtrip <- function(con, columns = "", invert = TRUE, force_sorted = FALSE) {
+test_roundtrip <- function(
+  con,
+  columns = "",
+  invert = TRUE,
+  force_sorted = FALSE
+) {
   dbms <- dbGetInfo(con)$dbms.name
   res <- list()
   testthat::test_that(paste0("[", dbms, "] round tripping data.frames works"), {
@@ -76,19 +98,28 @@ test_roundtrip <- function(con, columns = "", invert = TRUE, force_sorted = FALS
 
     # We can't use the data.frame constructor directly as list columns don't work there.
     sent <- list(
-
       # We always return strings as factors
       # factor = iris$Species,
-      datetime = as.POSIXct(as.numeric(iris$Petal.Length * 10), origin = "2016-01-01", tz = "UTC"),
+      datetime = as.POSIXct(
+        as.numeric(iris$Petal.Length * 10),
+        origin = "2016-01-01",
+        tz = "UTC"
+      ),
       date = as.Date(iris$Sepal.Width * 100, origin = Sys.time()),
       time = hms::hms(seconds = sample.int(24 * 60 * 60, NROW(iris))),
-      binary = blob::as_blob(lapply(seq_len(NROW(iris)), function(x) as.raw(sample(0:100, size = sample(0:25, 1))))),
+      binary = blob::as_blob(lapply(seq_len(NROW(iris)), function(x) {
+        as.raw(sample(0:100, size = sample(0:25, 1)))
+      })),
       integer = as.integer(iris$Petal.Width * 100),
       double = iris$Sepal.Length,
       character = as.character(iris$Species),
       logical = sample(c(TRUE, FALSE), size = nrow(iris), replace = T)
     )
-    attributes(sent) <- list(names = names(sent), row.names = c(NA_integer_, -length(sent[[1]])), class = "data.frame")
+    attributes(sent) <- list(
+      names = names(sent),
+      row.names = c(NA_integer_, -length(sent[[1]])),
+      class = "data.frame"
+    )
 
     # Add a proportion of NA values to a data frame
     add_na <- function(x, p = .1) {
@@ -101,11 +132,15 @@ test_roundtrip <- function(con, columns = "", invert = TRUE, force_sorted = FALS
     } else {
       sent <- sent[, names(sent) %in% columns]
     }
-    if (force_sorted) sent$id <- seq_len(NROW(iris))
+    if (force_sorted) {
+      sent$id <- seq_len(NROW(iris))
+    }
 
     DBI::dbWriteTable(con, "test_table", sent, overwrite = TRUE)
     received <- DBI::dbReadTable(con, "test_table")
-    if (force_sorted) received <- received[order(received$id), ]
+    if (force_sorted) {
+      received <- received[order(received$id), ]
+    }
     row.names(received) <- NULL
     testthat::expect_equal(sent, received)
     res <<- list(sent = sent, received = received)

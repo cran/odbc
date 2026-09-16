@@ -1,11 +1,11 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.7.0
+Version: 1.7.1
 Authors@R: c(
     person("Jim", "Hester", role = "aut"),
     person("Hadley", "Wickham", , "hadley@posit.co", role = c("aut", "cre")),
     person("Oliver", "Gjoneski", role = "aut"),
-    person("Simon", "Couch", email = "simon.couch@posit.co", role = "aut"),
+    person("Simon", "Couch", , "simon.couch@posit.co", role = "aut"),
     person("lexicalunit", role = "cph",
            comment = "nanodbc library"),
     person("Google Inc.", role = "cph",
@@ -21,15 +21,16 @@ Depends: R (>= 4.0.0)
 Imports: bit64, blob (>= 1.2.0), cli, DBI (>= 1.0.0), hms, lifecycle,
         methods, Rcpp (>= 0.12.11), rlang (>= 1.1.0), vctrs
 Suggests: connectcreds (>= 0.2.0), covr, DBItest, httr2, knitr,
-        magrittr, paws.common, rmarkdown, RSQLite, snowflakeauth,
-        testthat (>= 3.0.0), tibble, withr
+        magrittr, paws.common (>= 0.7.1), rmarkdown, RSQLite,
+        snowflakeauth, testthat (>= 3.0.0), tibble, withr
 LinkingTo: Rcpp
+VignetteBuilder: knitr
 ByteCompile: true
 Config/Needs/check: pkgbuild
 Config/Needs/website: tidyverse/tidytemplate
+Config/roxygen2/version: 8.1.0
 Config/testthat/edition: 3
 Encoding: UTF-8
-RoxygenNote: 7.3.3
 SystemRequirements: GNU make, An ODBC3 driver manager and drivers.
 Collate: 'RcppExports.R' 'aaa-odbc-data-type.R' 'connection-pane.R'
         'dbi-connection.R' 'odbc-connection.R' 'db.R' 'dbi-driver.R'
@@ -44,9 +45,8 @@ Collate: 'RcppExports.R' 'aaa-odbc-data-type.R' 'connection-pane.R'
         'import-standalone-types-check.R' 'odbc-config.R'
         'odbc-data-sources.R' 'odbc-drivers.R' 'odbc-package.R'
         'odbc.R' 'utils.R' 'zzz.R'
-VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2026-05-05 18:45:03 UTC; simoncouch
+Packaged: 2026-09-15 23:10:54 UTC; simoncouch
 Author: Jim Hester [aut],
   Hadley Wickham [aut, cre],
   Oliver Gjoneski [aut],
@@ -56,4 +56,4 @@ Author: Jim Hester [aut],
   Posit Software, PBC [cph, fnd]
 Maintainer: Hadley Wickham <hadley@posit.co>
 Repository: CRAN
-Date/Publication: 2026-05-09 15:00:02 UTC
+Date/Publication: 2026-09-16 04:50:02 UTC

@@ -481,9 +481,10 @@ incompatible architectures, navigate to
 checked.</p>
 <p>To connect via odbc, we need to pass the UID and PWD via the
 connection string; configuring those arguments via <code>odbc.ini</code>
-is <a href="https://stackoverflow.com/questions/42387084/sql-server-odbc-driver-linux-username">not
-permitted</a>. With the container deployed as above, the connection
-arguments would be:</p>
+is not permitted
+(<code>https://stackoverflow.com/questions/42387084/sql-server-odbc-driver-linux-username</code>).
+With the container deployed as above, the connection arguments would
+be:</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(</span>
 <span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  odbc<span class="sc">::</span><span class="fu">odbc</span>(), </span>
 <span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="at">dsn =</span> <span class="st">&quot;MicrosoftSQLServer&quot;</span>, </span>
