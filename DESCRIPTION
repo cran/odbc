@@ -1,6 +1,6 @@
 Package: odbc
 Title: Connect to ODBC Compatible Databases (using the DBI Interface)
-Version: 1.7.1
+Version: 1.7.2
 Authors@R: c(
     person("Jim", "Hester", role = "aut"),
     person("Hadley", "Wickham", , "hadley@posit.co", role = c("aut", "cre")),
@@ -17,7 +17,7 @@ License: MIT + file LICENSE
 URL: https://odbc.r-dbi.org, https://github.com/r-dbi/odbc,
         https://solutions.posit.co/connections/db/
 BugReports: https://github.com/r-dbi/odbc/issues
-Depends: R (>= 4.0.0)
+Depends: R (>= 4.2.0)
 Imports: bit64, blob (>= 1.2.0), cli, DBI (>= 1.0.0), hms, lifecycle,
         methods, Rcpp (>= 0.12.11), rlang (>= 1.1.0), vctrs
 Suggests: connectcreds (>= 0.2.0), covr, DBItest, httr2, knitr,
@@ -46,7 +46,7 @@ Collate: 'RcppExports.R' 'aaa-odbc-data-type.R' 'connection-pane.R'
         'odbc-data-sources.R' 'odbc-drivers.R' 'odbc-package.R'
         'odbc.R' 'utils.R' 'zzz.R'
 NeedsCompilation: yes
-Packaged: 2026-09-15 23:10:54 UTC; simoncouch
+Packaged: 2026-10-02 15:48:23 UTC; simoncouch
 Author: Jim Hester [aut],
   Hadley Wickham [aut, cre],
   Oliver Gjoneski [aut],
@@ -56,4 +56,4 @@ Author: Jim Hester [aut],
   Posit Software, PBC [cph, fnd]
 Maintainer: Hadley Wickham <hadley@posit.co>
 Repository: CRAN
-Date/Publication: 2026-09-16 04:50:02 UTC
+Date/Publication: 2026-10-02 16:30:02 UTC
